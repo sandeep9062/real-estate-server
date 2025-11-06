@@ -23,7 +23,7 @@ app.use(express.urlencoded({ extended: true }));
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:3001","https://real-estate-client-cyan.vercel.app/"],
+    origin: ["http://localhost:3000", "http://localhost:3001","https://real-estate-client-cyan.vercel.app"],
     credentials: true,
   })
 );
