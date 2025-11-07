@@ -99,9 +99,11 @@ const getProperties = asyncHandler(async (req, res) => {
 
   if (search) {
     query.$or = [
-      { title: { $regex: search, $options: "i" } },
       { "location.state": { $regex: search, $options: "i" } },
       { "location.address": { $regex: search, $options: "i" } },
+      { "location.city": { $regex: search, $options: "i" } },
+      { description: { $regex: search, $options: "i" } },
+      { title: { $regex: search, $options: "i" } },
     ];
   }
 
