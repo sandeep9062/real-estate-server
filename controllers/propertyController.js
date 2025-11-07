@@ -84,8 +84,8 @@ const getProperties = asyncHandler(async (req, res) => {
     search,
     deal,
     type,
-    minPrice,
-    maxPrice,
+    priceMin,
+    priceMax,
     areaMin,
     availability,
     areaMax,
@@ -122,10 +122,10 @@ const getProperties = asyncHandler(async (req, res) => {
       query["facilities.bedrooms"] = Number(bedrooms);
     }
   }
-  if (minPrice || maxPrice) {
+  if (priceMin || priceMax) {
     query.price = {};
-    if (minPrice) query.price.$gte = Number(minPrice);
-    if (maxPrice) query.price.$lte = Number(maxPrice);
+    if (priceMin) query.price.$gte = Number(priceMin);
+    if (priceMax) query.price.$lte = Number(priceMax);
   }
   if (areaMin || areaMax) {
     query["area.value"] = {};
