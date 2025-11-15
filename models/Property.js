@@ -21,6 +21,8 @@ locationSchema.index({ coordinates: "2dsphere" });
 const propertySchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
+
+    
     description: { type: String, required: true, trim: true },
 
     deal: {
@@ -95,7 +97,7 @@ const propertySchema = new mongoose.Schema(
     },
     facilities: {
       bedrooms: { type: Number, min: 0, index: true },
-      serventRooms: Number,
+      servantRooms: Number,
       bathrooms: Number,
       parkings: Number,
     },

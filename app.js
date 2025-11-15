@@ -12,6 +12,7 @@ import websiteImageRoutes from "./routes/websiteImageRoutes.js";
 import propertyRoutes from "./routes/propertyRoutes.js";
 import enquiryRoutes from "./routes/enquiryRoute.js";
 import userRoutes from "./routes/userRoutes.js";
+import contactRoutes from "./routes/contactRoutes.js";
 
 connectDB();
 
@@ -41,6 +42,12 @@ app.use("/api/v1/site-settings", siteSettingsRoutes);
 app.use("/api/auth", authRoutes);
 app.use("/api/v1/enquiry", enquiryRoutes);
 app.use("/api/properties", propertyRoutes);
+app.use("/api/v1/contacts", contactRoutes);
+
+
+
+
+
 // Start server
 app.listen(PORT, () => {
   console.log(`✅ Server Running at http://localhost:${PORT}`);
