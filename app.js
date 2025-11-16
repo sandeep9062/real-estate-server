@@ -22,9 +22,21 @@ const PORT = process.env.PORT || 9000;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:3001",
+  "https://real-estate-client-cyan.vercel.app",
+];
+
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:3001","https://real-estate-client-cyan.vercel.app"],
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
     credentials: true,
   })
 );
@@ -43,10 +55,6 @@ app.use("/api/auth", authRoutes);
 app.use("/api/v1/enquiry", enquiryRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/v1/contacts", contactRoutes);
-
-
-
-
 
 // Start server
 app.listen(PORT, () => {
