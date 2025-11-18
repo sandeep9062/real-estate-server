@@ -79,7 +79,7 @@ const createProperty = asyncHandler(async (req, res) => {
 // @route   GET /api/properties
 // @access  Public
 const getProperties = asyncHandler(async (req, res) => {
-  console.log(req.query);
+  // console.log(req.query);
   const {
     search,
     deal,
@@ -101,8 +101,8 @@ const getProperties = asyncHandler(async (req, res) => {
     query.$or = [
       { "location.state": { $regex: search, $options: "i" } },
       { "location.address": { $regex: search, $options: "i" } },
-      { "location.city": { $regex: search, $options: "i" } },//change
-      { description: { $regex: search, $options: "i" } },//change
+      { "location.city": { $regex: search, $options: "i" } }, //change
+      { description: { $regex: search, $options: "i" } }, //change
       { title: { $regex: search, $options: "i" } },
     ];
   }

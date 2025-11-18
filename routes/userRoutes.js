@@ -26,25 +26,30 @@ router.post("/register", async (req, res) => {
 
     const payload = { user: { id: user._id, role: user.role } };
 
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" }, (error, token) => {
-      if (error) throw error;
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" },
+      (error, token) => {
+        if (error) throw error;
 
-      res.status(201).json({
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          image: user.image,
-          favProperties: user.favProperties || [],
-          bookings: user.bookedVisits || [],
-          ownedProperties: user.ownedProperties || [],
-        },
-        token,
-      });
-    });
+        res.status(201).json({
+          user: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            role: user.role,
+            image: user.image,
+            favProperties: user.favProperties || [],
+            bookings: user.bookedVisits || [],
+            ownedProperties: user.ownedProperties || [],
+          },
+          token,
+        });
+      }
+    );
   } catch (error) {
-    console.error("Register error:", error);
+    //console.error("Register error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -54,7 +59,9 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body;
 
   if (!email || !password) {
-    return res.status(400).json({ message: "Please provide email and password" });
+    return res
+      .status(400)
+      .json({ message: "Please provide email and password" });
   }
 
   try {
@@ -66,27 +73,32 @@ router.post("/login", async (req, res) => {
 
     const payload = { user: { id: user._id, role: user.role } };
 
-    jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: "7d" }, (err, token) => {
-      if (err) {
-        console.error("JWT Signing Error:", err);
-        return res.status(500).json({ message: "Token generation failed" });
-      }
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" },
+      (err, token) => {
+        if (err) {
+          console.error("JWT Signing Error:", err);
+          return res.status(500).json({ message: "Token generation failed" });
+        }
 
-      return res.status(200).json({
-        user: {
-          _id: user._id,
-          name: user.name,
-          email: user.email,
-          phone: user.phone,
-          role: user.role,
-          image: user.image,
-          favProperties: user.favProperties || [],
-          bookings: user.bookedVisits || [],
-          ownedProperties: user.ownedProperties || [],
-        },
-        token,
-      });
-    });
+        return res.status(200).json({
+          user: {
+            _id: user._id,
+            name: user.name,
+            email: user.email,
+            phone: user.phone,
+            role: user.role,
+            image: user.image,
+            favProperties: user.favProperties || [],
+            bookings: user.bookedVisits || [],
+            ownedProperties: user.ownedProperties || [],
+          },
+          token,
+        });
+      }
+    );
   } catch (err) {
     console.error("Login error:", err);
     return res.status(500).json({ message: "Server Error" });
@@ -94,38 +106,43 @@ router.post("/login", async (req, res) => {
 });
 
 // ✅ Profile Update Route (with image upload)
-router.put("/profile-update", protect, upload.single("image"), async (req, res) => {
-  const { name, email, phone } = req.body;
+router.put(
+  "/profile-update",
+  protect,
+  upload.single("image"),
+  async (req, res) => {
+    const { name, email, phone } = req.body;
 
-  try {
-    const user = await User.findById(req.user._id);
+    try {
+      const user = await User.findById(req.user._id);
 
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+
+      const imageUrl = req.file ? req.file.path : user.image;
+
+      user.name = name || user.name;
+      user.email = email || user.email;
+      user.phone = phone || user.phone;
+      user.image = imageUrl;
+
+      const updatedUser = await user.save();
+
+      return res.status(200).json({
+        _id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        role: updatedUser.role,
+        image: updatedUser.image,
+      });
+    } catch (error) {
+      console.error("Profile update error:", error);
+      res.status(500).json({ message: "Server Error" });
     }
-
-    const imageUrl = req.file ? req.file.path : user.image;
-
-    user.name = name || user.name;
-    user.email = email || user.email;
-    user.phone = phone || user.phone;
-    user.image = imageUrl;
-
-    const updatedUser = await user.save();
-
-    return res.status(200).json({
-      _id: updatedUser._id,
-      name: updatedUser.name,
-      email: updatedUser.email,
-      phone: updatedUser.phone,
-      role: updatedUser.role,
-      image: updatedUser.image,
-    });
-  } catch (error) {
-    console.error("Profile update error:", error);
-    res.status(500).json({ message: "Server Error" });
   }
-});
+);
 
 // ✅ Get logged-in user's profile
 router.get("/profile", protect, async (req, res) => {
@@ -251,7 +268,9 @@ router.post("/bookings", protect, async (req, res) => {
   try {
     const { propertyId, date } = req.body || {};
     if (!propertyId || !date) {
-      return res.status(400).json({ message: "propertyId and date are required" });
+      return res
+        .status(400)
+        .json({ message: "propertyId and date are required" });
     }
 
     const user = await User.findById(req.user._id).select("-password");
@@ -270,7 +289,10 @@ router.post("/bookings", protect, async (req, res) => {
     }
 
     const updated = await user.save();
-    const responseUser = { ...updated.toObject(), bookings: updated.bookedVisits || [] };
+    const responseUser = {
+      ...updated.toObject(),
+      bookings: updated.bookedVisits || [],
+    };
     return res.status(200).json(responseUser);
   } catch (error) {
     console.error("Book visit error:", error);
@@ -292,7 +314,10 @@ router.delete("/bookings/:propertyId", protect, async (req, res) => {
     );
 
     const updated = await user.save();
-    const responseUser = { ...updated.toObject(), bookings: updated.bookedVisits || [] };
+    const responseUser = {
+      ...updated.toObject(),
+      bookings: updated.bookedVisits || [],
+    };
     return res.status(200).json(responseUser);
   } catch (error) {
     console.error("Cancel booking error:", error);
