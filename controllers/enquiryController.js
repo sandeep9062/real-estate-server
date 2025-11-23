@@ -2,8 +2,13 @@ import Enquiry from "../models/enquiry.js";
 
 export const createEnquiry = async (req, res) => {
   try {
+    
     // unncomment it if you want that same use cannot post-requirement twice.
+    
+    
     //console.log(req.body);
+
+    
     //const { email, phone } = req.body;
 
     // const existingEnquiry = await Enquiry.findOne({
