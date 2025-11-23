@@ -2,18 +2,19 @@ import Enquiry from "../models/enquiry.js";
 
 export const createEnquiry = async (req, res) => {
   try {
+    // unncomment it if you want that same use cannot post-requirement twice.
     //console.log(req.body);
-    const { email, phone } = req.body;
+    //const { email, phone } = req.body;
 
-    const existingEnquiry = await Enquiry.findOne({
-      $or: [{ email }, { phone }],
-    });
+    // const existingEnquiry = await Enquiry.findOne({
+    //   $or: [{ email }, { phone }],
+    // });
 
-    if (existingEnquiry) {
-      return res.status(409).json({
-        error: "An enquiry with this email or phone number already exists.",
-      });
-    }
+    // if (existingEnquiry) {
+    //   return res.status(409).json({
+    //     error: "An enquiry with this email or phone number already exists.",
+    //   });
+    // }
 
     const enquiry = new Enquiry(req.body);
     await enquiry.save();

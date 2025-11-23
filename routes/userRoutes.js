@@ -1,7 +1,7 @@
 import express from "express";
 import jwt from "jsonwebtoken";
 import User from "../models/User.js";
-import { protect } from "../middlewares/authMiddleware.js";
+import { checkAdmin, protect } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multer.js";
 import { getUsers } from "../controllers/userController.js";
 import Booking from "../models/Booking.js";
@@ -252,10 +252,10 @@ router.post("/", async (req, res) => {
 });
 
 // ✅ Get all users
-router.get("/", getUsers);
+router.get("/", protect, checkAdmin, getUsers);
 
 // ✅ Update user by ID
-router.put("/:id", async (req, res) => {
+router.put("/:id", protect, async (req, res) => {
   const { name, email, phone, role, isActive } = req.body;
 
   try {
@@ -376,7 +376,7 @@ router.delete("/bookings/:propertyId", protect, async (req, res) => {
 });
 
 // ✅ Delete user by ID
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", protect, checkAdmin, async (req, res) => {
   try {
     const user = await User.findById(req.params.id);
 
