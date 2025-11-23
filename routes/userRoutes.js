@@ -3,6 +3,8 @@ import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import { protect } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multer.js";
+import { getUsers } from "../controllers/userController.js";
+import Booking from "../models/Booking.js";
 
 const router = express.Router();
 
@@ -41,7 +43,7 @@ router.post("/register", async (req, res) => {
             role: user.role,
             image: user.image,
             favProperties: user.favProperties || [],
-            bookings: user.bookedVisits || [],
+            bookedVisits: user.bookedVisits || [],
             ownedProperties: user.ownedProperties || [],
           },
           token,
@@ -92,7 +94,7 @@ router.post("/login", async (req, res) => {
             role: user.role,
             image: user.image,
             favProperties: user.favProperties || [],
-            bookings: user.bookedVisits || [],
+            bookedVisits: user.bookedVisits || [],
             ownedProperties: user.ownedProperties || [],
           },
           token,
@@ -153,7 +155,7 @@ router.get("/profile", protect, async (req, res) => {
     }
     const responseUser = {
       ...user.toObject(),
-      bookings: user.bookedVisits || [],
+      bookedVisits: user.bookedVisits || [],
     };
     res.json({ user: responseUser, message: "User Data" });
   } catch (error) {
@@ -178,11 +180,36 @@ router.get("/favourites", protect, async (req, res) => {
   }
 });
 
+// ✅ Get all bookings of a user
+router.get("/bookings", protect, async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).populate({
+      path: "bookedVisits",
+      populate: {
+        path: "property",
+        model: "Property",
+      },
+    });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    res.status(200).json(user.bookedVisits);
+  } catch (err) {
+    console.log(err);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
+
 // ✅ Get user by ID
 router.get("/:id", async (req, res) => {
   try {
     const userId = req.params.id;
-    const user = await User.findById(userId).select("-password");
+    const user = await User.findById(userId)
+      .select("-password")
+      .populate({
+        path: "bookedVisits",
+        populate: { path: "property" },
+      });
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
@@ -191,7 +218,6 @@ router.get("/:id", async (req, res) => {
     // Align field name with frontend expectation
     const responseUser = {
       ...user.toObject(),
-      bookings: user.bookedVisits || [],
     };
     res.json(responseUser);
   } catch (error) {
@@ -200,19 +226,38 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// ✅ Get all users
-router.get("/", async (req, res) => {
+// ✅ Create a new user
+router.post("/", async (req, res) => {
+  const { name, email, phone, role } = req.body;
+
   try {
-    const users = await User.find({}).select("-password");
-    res.json(users);
+    if (!name || !email) {
+      return res.status(400).json({ message: "Name and email are required" });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    user = new User({ name, email, phone, role });
+    await user.save();
+
+    res.status(201).json(user);
   } catch (error) {
-    console.error("Error fetching users:", error);
+    console.error("Create user error:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
 
-// ✅ Toggle user status
-router.put("/:id/toggle", async (req, res) => {
+// ✅ Get all users
+router.get("/", getUsers);
+
+// ✅ Update user by ID
+router.put("/:id", async (req, res) => {
+  const { name, email, phone, role, isActive } = req.body;
+
   try {
     const user = await User.findById(req.params.id);
 
@@ -220,12 +265,17 @@ router.put("/:id/toggle", async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    user.isActive = req.body.isActive;
-    await user.save();
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.phone = phone || user.phone;
+    user.role = role || user.role;
+    user.isActive = isActive === undefined ? user.isActive : isActive;
 
-    res.json(user);
+    const updatedUser = await user.save();
+
+    res.json(updatedUser);
   } catch (error) {
-    console.error("Error toggling user status:", error);
+    console.error("Error updating user:", error);
     res.status(500).json({ message: "Server Error" });
   }
 });
@@ -266,34 +316,34 @@ router.post("/toFav/:propId", protect, async (req, res) => {
 // ✅ Book a property visit
 router.post("/bookings", protect, async (req, res) => {
   try {
-    const { propertyId, date } = req.body || {};
+    const { propertyId, date } = req.body;
     if (!propertyId || !date) {
       return res
         .status(400)
         .json({ message: "propertyId and date are required" });
     }
 
-    const user = await User.findById(req.user._id).select("-password");
+    const user = await User.findById(req.user._id);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Upsert booking for this property
-    const existingIndex = (user.bookedVisits || []).findIndex(
-      (b) => String(b?.id) === String(propertyId)
-    );
-    if (existingIndex >= 0) {
-      user.bookedVisits[existingIndex] = { id: propertyId, date };
-    } else {
-      user.bookedVisits.push({ id: propertyId, date });
-    }
+    // Create a new booking
+    const newBooking = new Booking({
+      user: req.user._id,
+      property: propertyId,
+      date,
+    });
+    await newBooking.save();
 
-    const updated = await user.save();
-    const responseUser = {
-      ...updated.toObject(),
-      bookings: updated.bookedVisits || [],
-    };
-    return res.status(200).json(responseUser);
+    // Add booking to user's bookedVisits
+    user.bookedVisits.push(newBooking._id);
+    await user.save();
+
+    const populatedUser = await User.findById(req.user._id)
+      .populate("bookedVisits")
+      .select("-password");
+    return res.status(200).json(populatedUser);
   } catch (error) {
     console.error("Book visit error:", error);
     return res.status(500).json({ message: "Server Error" });
@@ -316,7 +366,7 @@ router.delete("/bookings/:propertyId", protect, async (req, res) => {
     const updated = await user.save();
     const responseUser = {
       ...updated.toObject(),
-      bookings: updated.bookedVisits || [],
+      bookedVisits: updated.bookedVisits || [],
     };
     return res.status(200).json(responseUser);
   } catch (error) {
@@ -325,4 +375,21 @@ router.delete("/bookings/:propertyId", protect, async (req, res) => {
   }
 });
 
+// ✅ Delete user by ID
+router.delete("/:id", async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    await user.deleteOne();
+
+    res.json({ message: "User removed" });
+  } catch (error) {
+    console.error("Error deleting user:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+});
 export default router;

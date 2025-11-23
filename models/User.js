@@ -1,5 +1,6 @@
-import mongoose from 'mongoose';
-import bcrypt from 'bcryptjs';
+import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import Booking from "./Booking.js";
 
 const userSchema = mongoose.Schema(
   {
@@ -12,6 +13,16 @@ const userSchema = mongoose.Schema(
       required: true,
       unique: true,
     },
+    role: {
+      type: String,
+      enum: ["user", "admin", "agent", "landlord"], // you can add more
+      default: "user",
+    },
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
+
     phone: {
       type: String,
     },
@@ -22,9 +33,11 @@ const userSchema = mongoose.Schema(
     image: {
       type: String,
     },
-    bookedVisits: [{ type: Object }],
-    favProperties: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Property' }],
-    ownedProperties: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Property' }],
+    bookedVisits: [{ type: mongoose.Schema.Types.ObjectId, ref: "Booking" }],
+    favProperties: [{ type: mongoose.Schema.Types.ObjectId, ref: "Property" }],
+    ownedProperties: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
+    ],
   },
   {
     timestamps: true,
@@ -35,8 +48,8 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) {
+userSchema.pre("save", async function (next) {
+  if (!this.isModified("password")) {
     next();
   }
 
@@ -44,6 +57,6 @@ userSchema.pre('save', async function (next) {
   this.password = await bcrypt.hash(this.password, salt);
 });
 
-const User = mongoose.model('User', userSchema);
+const User = mongoose.model("User", userSchema);
 
 export default User;

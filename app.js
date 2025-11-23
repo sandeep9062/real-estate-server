@@ -13,6 +13,7 @@ import propertyRoutes from "./routes/propertyRoutes.js";
 import enquiryRoutes from "./routes/enquiryRoute.js";
 import userRoutes from "./routes/userRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
+import bookingRoutes from "./routes/bookingRoutes.js";
 
 connectDB();
 
@@ -57,6 +58,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/v1/enquiry", enquiryRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/v1/contacts", contactRoutes);
+app.use("/api/bookings", bookingRoutes);
 
 // Start server
 app.listen(PORT, () => {
