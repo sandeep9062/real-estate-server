@@ -14,6 +14,7 @@ import enquiryRoutes from "./routes/enquiryRoute.js";
 import userRoutes from "./routes/userRoutes.js";
 import contactRoutes from "./routes/contactRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
+import chatbotRouter from "./routes/chatbotRoutes.js";
 
 connectDB();
 
@@ -27,8 +28,6 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://real-estate-client-lime.vercel.app",
-
-
 ];
 
 app.use(
@@ -59,6 +58,9 @@ app.use("/api/v1/enquiry", enquiryRoutes);
 app.use("/api/properties", propertyRoutes);
 app.use("/api/v1/contacts", contactRoutes);
 app.use("/api/bookings", bookingRoutes);
+
+app.use("/api/chatbot",chatbotRouter);
+
 
 // Start server
 app.listen(PORT, () => {
