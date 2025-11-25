@@ -1,7 +1,10 @@
 import express from "express";
 import Lead from "../models/ClientLead.js";
-import { chatbotSteps } from "../chatbot/chatbotFlow.js";
-import { generateAgentSummary } from "../chatbot/generateSummary.js";
+import { chatbotFlow } from "../chatbot/chatbotFlow.js";
+import {
+  generateAgentSummary,
+  generateUserSummary,
+} from "../chatbot/generateSummary.js";
 
 const chatbotRouter = express.Router();
 
@@ -11,7 +14,7 @@ chatbotRouter.post("/", async (req, res) => {
   const { sessionId, message } = req.body;
 
   if (!sessions[sessionId]) {
-    sessions[sessionId] = { step: 0, data: {} };
+    sessions[sessionId] = { currentStepKey: chatbotFlow.start, data: {} };
     const greetings = ["hi", "hello", "hey", "hlo"];
     if (greetings.includes(message.toLowerCase())) {
       const responses = [
@@ -20,27 +23,36 @@ chatbotRouter.post("/", async (req, res) => {
         "Hey! I'm here to help you find the perfect property. What are you looking for?",
       ];
       const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      const firstStep = chatbotFlow.steps[chatbotFlow.start];
       return res.json({
-        reply: randomResponse,
+        reply: `${randomResponse} ${firstStep.question}`,
       });
     }
+    const firstStep = chatbotFlow.steps[chatbotFlow.start];
     return res.json({
-      reply: chatbotSteps[0].question,
+      reply: firstStep.question,
     });
   }
 
   let session = sessions[sessionId];
-  let currentStep = chatbotSteps[session.step];
+  let currentStep = chatbotFlow.steps[session.currentStepKey];
 
-  // Validate step to prevent out-of-bounds access
-  if (!currentStep) {
-    delete sessions[sessionId]; // Clear broken session
+  // Allow user to restart conversation
+  if (message.toLowerCase() === "restart") {
+    sessions[sessionId] = { currentStepKey: chatbotFlow.start, data: {} };
     return res.json({
-      reply: "Sorry, something went wrong. Let's start over.",
+      reply: chatbotFlow.steps[chatbotFlow.start].question,
     });
   }
 
-  // Email validation
+  if (!currentStep) {
+    delete sessions[sessionId];
+    return res.json({
+      reply: "Sorry, something went wrong. Let's restart the conversation.",
+    });
+  }
+
+  // Validation logic
   if (currentStep.key === "email") {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(message)) {
@@ -50,7 +62,6 @@ chatbotRouter.post("/", async (req, res) => {
     }
   }
 
-  // Phone validation
   if (currentStep.key === "phone") {
     const phoneRegex = /^\d{10}$/;
     if (!phoneRegex.test(message)) {
@@ -60,47 +71,82 @@ chatbotRouter.post("/", async (req, res) => {
     }
   }
 
-  // Save answer
-  if (currentStep.key === "amenities") {
-    session.data[currentStep.key] = message.split(",").map((a) => a.trim());
-  } else if (
-    currentStep.key === "preApprovedLoan" ||
-    currentStep.key === "needLoanAssistance" ||
-    currentStep.key === "reraOnly" ||
-    currentStep.key === "consentGiven"
-  ) {
-    session.data[currentStep.key] = message.toLowerCase().includes("yes");
-  } else {
-    session.data[currentStep.key] = message;
+  // Validation for fullName
+  if (currentStep.key === "fullName") {
+    const nameRegex = /^[a-zA-Z\s]+$/;
+    if (!message || !nameRegex.test(message)) {
+      return res.json({
+        reply: currentStep.invalidInput || chatbotFlow.invalidInput.question,
+      });
+    }
   }
 
-  session.step++;
+  // Save the answer (but not for the summary step itself)
+  let isYes = message.toLowerCase().includes("yes");
+  if (currentStep.key !== "summary") {
+    if (currentStep.key === "amenities") {
+      session.data[currentStep.key] = message.split(",").map((a) => a.trim());
+    } else if (
+      ["preApprovedLoan", "needLoanAssistance", "reraOnly", "consentGiven"].includes(
+        currentStep.key
+      )
+    ) {
+      session.data[currentStep.key] = isYes;
+    } else {
+      session.data[currentStep.key] = message;
+    }
+  }
 
-  // Completed?
-  if (session.step >= chatbotSteps.length) {
+  // Determine the next step
+  let nextStepKey;
+  if (currentStep.branches) {
+    const normalizedMessage = message.toLowerCase();
+    if (normalizedMessage.includes("yes")) {
+      nextStepKey = currentStep.branches.yes;
+    } else if (normalizedMessage.includes("no")) {
+      nextStepKey = currentStep.branches.no;
+    } else {
+      // Handle invalid input for branching questions
+      return res.json({
+        reply: chatbotFlow.invalidInput.question,
+      });
+    }
+  } else {
+    nextStepKey = currentStep.next;
+  }
+  session.currentStepKey = nextStepKey;
+
+  // Check if conversation is finished
+  if (nextStepKey === "end") {
     const agentSummary = generateAgentSummary(session.data);
-
     const lead = new Lead({
       ...session.data,
       agentSummary,
       source: "Chatbot",
     });
-
     await lead.save();
-
     delete sessions[sessionId];
 
     return res.json({
-      reply:
-        "Thank you! Your details are submitted. Our property expert will contact you shortly.",
+      reply: "Thank you! Your details are submitted. Our property expert will contact you shortly.",
       agentSummary,
       completed: true,
     });
   }
 
-  // Ask next question
+  const nextStep = chatbotFlow.steps[nextStepKey];
+
+  // If the next step is the summary, generate and send it
+  if (nextStepKey === "summary") {
+    const userSummary = generateUserSummary(session.data);
+    return res.json({
+      reply: userSummary,
+    });
+  }
+
+  // Otherwise, ask the next question
   return res.json({
-    reply: chatbotSteps[session.step].question,
+    reply: nextStep.question,
   });
 });
 
