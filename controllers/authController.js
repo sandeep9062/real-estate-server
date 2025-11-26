@@ -35,9 +35,20 @@ export const registerUser = async (req, res) => {
 
     const token = generateToken(user);
 
-    
-
-    res.status(201).json({ user, token });
+    res.status(201).json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        image: user.image,
+        favProperties: user.favProperties || [],
+        bookedVisits: user.bookedVisits || [],
+        ownedProperties: user.ownedProperties || [],
+      },
+      token,
+      message: "user Registered Succesfully",
+    });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
   }
@@ -61,11 +72,33 @@ export const loginUser = async (req, res) => {
       return res.status(400).json({ message: "Invalid credentials" });
 
     const token = generateToken(user);
-    const { _id, name, email, role, phone, favProperties, image,bookedVisits,ownedProperties } = user;
+
+    const {
+      _id,
+      name,
+      email,
+      role,
+      phone,
+      favProperties,
+      image,
+      bookedVisits,
+      ownedProperties,
+    } = user;
     res.status(200).json({
-      user: { _id, name, email, role, phone, favProperties, image,bookedVisits,ownedProperties },
+      user: {
+        _id,
+        name,
+        email,
+        role,
+        phone,
+        favProperties,
+        image,
+        bookedVisits,
+        ownedProperties,
+      },
       token,
       role: user.role,
+      message: "User Logged in succesfully",
     });
   } catch (error) {
     res.status(500).json({ message: "Server error", error });
@@ -85,12 +118,14 @@ export const googleAuth = async (req, res) => {
     });
 
     const payload = ticket.getPayload();
+
     const { sub: googleId, email, name, picture } = payload;
 
     let user = await User.findOne({ email });
 
     if (user) {
       // If user exists, generate token and send back
+
       const jwtToken = generateToken(user);
       return res.status(200).json({ user, token: jwtToken });
     }
@@ -98,6 +133,7 @@ export const googleAuth = async (req, res) => {
     // If new user, create account
     const password = Math.random().toString(36).slice(-8);
     const hashedPassword = await bcrypt.hash(password, 10);
+
     user = await User.create({
       name,
       email,
@@ -140,7 +176,6 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 min expiry
     await user.save();
 
-    
     res.status(200).json({ message: "Password reset email sent successfully" });
   } catch (error) {
     res.status(500).json({ message: "Error sending reset email", error });

@@ -22,7 +22,8 @@ chatbotRouter.post("/", async (req, res) => {
         "Hi there! What can I help you find?",
         "Hey! I'm here to help you find the perfect property. What are you looking for?",
       ];
-      const randomResponse = responses[Math.floor(Math.random() * responses.length)];
+      const randomResponse =
+        responses[Math.floor(Math.random() * responses.length)];
       const firstStep = chatbotFlow.steps[chatbotFlow.start];
       return res.json({
         reply: `${randomResponse} ${firstStep.question}`,
@@ -57,7 +58,8 @@ chatbotRouter.post("/", async (req, res) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(message)) {
       return res.json({
-        reply: "That email address doesn't look right. Please enter a valid email.",
+        reply:
+          "That email address doesn't look right. Please enter a valid email.",
       });
     }
   }
@@ -87,9 +89,12 @@ chatbotRouter.post("/", async (req, res) => {
     if (currentStep.key === "amenities") {
       session.data[currentStep.key] = message.split(",").map((a) => a.trim());
     } else if (
-      ["preApprovedLoan", "needLoanAssistance", "reraOnly", "consentGiven"].includes(
-        currentStep.key
-      )
+      [
+        "preApprovedLoan",
+        "needLoanAssistance",
+        "reraOnly",
+        "consentGiven",
+      ].includes(currentStep.key)
     ) {
       session.data[currentStep.key] = isYes;
     } else {
@@ -125,10 +130,12 @@ chatbotRouter.post("/", async (req, res) => {
       source: "Chatbot",
     });
     await lead.save();
+
     delete sessions[sessionId];
 
     return res.json({
-      reply: "Thank you! Your details are submitted. Our property expert will contact you shortly.",
+      reply:
+        "Thank you! Your details are submitted. Our property expert will contact you shortly.",
       agentSummary,
       completed: true,
     });
