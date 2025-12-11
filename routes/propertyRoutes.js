@@ -8,6 +8,7 @@ import {
   deleteProperty,
   getOwnedProperties,
 } from "../controllers/propertyController.js";
+
 import { protect } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multer.js";
 

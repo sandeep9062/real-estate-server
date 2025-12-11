@@ -67,4 +67,28 @@ const deleteBooking = async (req, res) => {
   }
 };
 
-export { getAllBookings, getBookingById, deleteBooking };
+// @desc    Update a booking's status
+// @route   PATCH /api/bookings/:id/status
+// @access  Private/Admin
+const updateBookingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    const booking = await Booking.findById(id);
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    booking.status = status;
+    await booking.save();
+
+    res.json({ message: "Booking status updated successfully", booking });
+  } catch (error) {
+    console.error("Error updating booking status:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export { getAllBookings, getBookingById, deleteBooking, updateBookingStatus };

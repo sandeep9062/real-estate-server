@@ -16,7 +16,8 @@ const bookingSchema = mongoose.Schema(
       type: String,
       required: true,
     },
-    status: { type: String, default: "Pending" }, sessionId: String,
+    status: { type: String, default: "Pending" },
+    sessionId: String,
   },
   {
     timestamps: true,

@@ -29,6 +29,7 @@ export const protect = async (req, res, next) => {
       }
 
       req.user = user; // attach user to request
+
       next();
     } catch (error) {
       console.error("JWT Error:", error);
