@@ -35,7 +35,7 @@ app.use(arcjetMiddleware);
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
-  "https://real-estate-client-lime.vercel.app",
+
   "https://www.propertybulbul.com",
 ];
 
