@@ -35,7 +35,6 @@ app.use(arcjetMiddleware);
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
-
   "https://www.propertybulbul.com",
 ];
 

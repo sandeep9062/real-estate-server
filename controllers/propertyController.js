@@ -1,5 +1,6 @@
 import asyncHandler from "express-async-handler";
 import Property from "../models/Property.js";
+import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 
 // @desc    Create a property
@@ -254,9 +255,10 @@ const updateProperty = asyncHandler(async (req, res) => {
   res.json(updatedProperty);
 });
 
-// @desc    Delete a property (soft delete)
+// @desc    Delete a property + cleanup favorites + cleanup bookings
 // @route   DELETE /api/properties/:id
-// @access  Private
+// @access  Private (Admin or Owner)
+
 const deleteProperty = asyncHandler(async (req, res) => {
   const property = await Property.findById(req.params.id);
 
@@ -265,16 +267,48 @@ const deleteProperty = asyncHandler(async (req, res) => {
     throw new Error("Property not found");
   }
 
-  if (property.user.toString() !== req.user._id.toString()) {
-    res.status(401);
-    throw new Error("User not authorized");
+  const isOwner = property.user.toString() === req.user._id.toString();
+  const isAdmin = req.user.role === "admin";
+
+  if (!isOwner && !isAdmin) {
+    res.status(403);
+    throw new Error("Not authorized to delete this property");
   }
 
+  // 1️⃣ Soft delete the property
   property.deletedAt = new Date();
   property.isActive = false;
   await property.save();
 
-  res.json({ message: "Property removed" });
+  // 2️⃣ Remove property from ALL users' favorites
+  await User.updateMany(
+    { favProperties: property._id },
+    { $pull: { favProperties: property._id } }
+  );
+
+  // 3️⃣ Delete all bookings related to this property
+  const deletedBookings = await Booking.find({ property: property._id });
+
+  await Booking.deleteMany({ property: property._id });
+
+  // 4️⃣ Remove deleted bookings from users' bookedVisits
+  const bookingIds = deletedBookings.map((b) => b._id);
+
+  await User.updateMany(
+    { bookedVisits: { $in: bookingIds } },
+    { $pull: { bookedVisits: { $in: bookingIds } } }
+  );
+
+  // 5️⃣ Remove from property owner's list (only if admin deletes)
+  if (isAdmin && !isOwner) {
+    await User.findByIdAndUpdate(property.user, {
+      $pull: { ownedProperties: property._id },
+    });
+  }
+
+  res.json({
+    message: "Property deleted. Favorites and bookings cleaned up.",
+  });
 });
 
 // @desc    Get properties owned by authenticated user

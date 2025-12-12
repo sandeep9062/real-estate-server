@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 
 const connectDB = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_DB, { dbName: "Property" });
+    await mongoose.connect(process.env.MONGO_DB, { dbName: "PropertyBulbul" });
     console.log("✅ MONGODB Connected Successfully");
   } catch (error) {
     console.error("❌ MONGODB Failed to Connect:", error.message);
