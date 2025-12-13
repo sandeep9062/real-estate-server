@@ -212,12 +212,14 @@ const updateProperty = asyncHandler(async (req, res) => {
     commercialPropertyTypes,
     investmentOptions,
     facilities,
+    existingImages,
     isActive,
   } = req.body;
 
-  const images = req.files
+  const newImages = req.files
     ? req.files.map((file) => file.path)
-    : property.image;
+    : [];
+  const images = existingImages ? [...JSON.parse(existingImages), ...newImages] : property.image;
 
   property.title = title || property.title;
   property.description = description || property.description;
