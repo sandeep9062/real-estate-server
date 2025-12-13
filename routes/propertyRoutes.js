@@ -15,12 +15,12 @@ import upload from "../middlewares/multer.js";
 router
   .route("/")
   .get(getProperties)
-  .post(protect, upload.array("image", 12), createProperty);
+  .post(protect, upload.array("image", 25), createProperty);
 router.get("/owned", protect, getOwnedProperties);
 router
   .route("/:id")
   .get(getPropertyById)
-  .put(protect, upload.array("image", 12), updateProperty)
+  .put(protect, upload.array("image", 25), updateProperty)
   .delete(protect, deleteProperty);
 
 export default router;
