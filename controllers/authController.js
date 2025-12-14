@@ -6,6 +6,7 @@ import axios from "axios";
 
 import generateToken from "../utils/generateToken.js";
 import { OAuth2Client } from "google-auth-library";
+import { createNotification } from "./notificationController.js";
 
 const client = new OAuth2Client("YOUR_GOOGLE_CLIENT_ID");
 
@@ -32,6 +33,31 @@ export const registerUser = async (req, res) => {
       password,
       role: role || "user", // Default role to 'user' if not provided
     });
+
+    // Create notifications for admins when a new user registers
+    try {
+      const adminUsers = await User.find({ role: 'admin' });
+
+      for (const admin of adminUsers) {
+        await createNotification({
+          userId: admin._id,
+          title: `New User Registration`,
+          message: `${name} (${email}) has registered as a ${user.role}`,
+          type: 'info',
+          category: 'user',
+          priority: 'low',
+          metadata: {
+            userId: user._id,
+            userEmail: email,
+            userRole: user.role,
+          },
+          actionUrl: `/dashboard/users/${user._id}`,
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error creating user registration notification:', notificationError);
+      // Don't fail registration if notification creation fails
+    }
 
     const token = generateToken(user);
 
@@ -143,6 +169,32 @@ export const googleAuth = async (req, res) => {
       image: picture,
     });
 
+    // Create notifications for admins when a new user registers via Google
+    try {
+      const adminUsers = await User.find({ role: 'admin' });
+
+      for (const admin of adminUsers) {
+        await createNotification({
+          userId: admin._id,
+          title: `New User Registration (Google)`,
+          message: `${name} (${email}) has registered via Google as a ${user.role}`,
+          type: 'info',
+          category: 'user',
+          priority: 'low',
+          metadata: {
+            userId: user._id,
+            userEmail: email,
+            userRole: user.role,
+            registrationMethod: 'google',
+          },
+          actionUrl: `/dashboard/users/${user._id}`,
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error creating Google user registration notification:', notificationError);
+      // Don't fail registration if notification creation fails
+    }
+
     const jwtToken = generateToken(user);
     res.status(200).json({ user, token: jwtToken });
   } catch (error) {
@@ -210,6 +262,44 @@ export const resetPassword = async (req, res) => {
     res.status(200).json({ message: "Password reset successful" });
   } catch (error) {
     res.status(500).json({ message: "Error resetting password", error });
+  }
+};
+
+// ==================
+// CHANGE PASSWORD
+// ==================
+export const changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: "Current password and new password are required" });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: "New password must be at least 6 characters long" });
+    }
+
+    const user = await User.findById(req.user._id);
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    // Verify current password
+    const isMatch = await user.matchPassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: "Current password is incorrect" });
+    }
+
+    // Update password
+    user.password = newPassword;
+    await user.save();
+
+    res.status(200).json({ message: "Password changed successfully" });
+  } catch (error) {
+    console.error("Change password error:", error);
+    res.status(500).json({ message: "Server error", error });
   }
 };
 

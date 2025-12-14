@@ -16,6 +16,7 @@ import contactRoutes from "./routes/contactRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import chatbotRouter from "./routes/chatbotRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
 
 import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
@@ -30,7 +31,9 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 app.use(cookieParser());
-app.use(arcjetMiddleware);
+if (process.env.NODE_ENV === "production") {
+  app.use(arcjetMiddleware);
+}
 
 const allowedOrigins = [
   "http://localhost:3000",
@@ -68,6 +71,7 @@ app.use("/api/properties", propertyRoutes);
 app.use("/api/v1/contacts", contactRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/notifications", notificationRoutes);
 
 app.use("/api/chatbot", chatbotRouter);
 

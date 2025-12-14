@@ -1,5 +1,6 @@
 import Booking from '../models/Booking.js';
 import User from '../models/User.js';
+import { createNotification } from './notificationController.js';
 
 // @desc    Get all bookings
 // @route   GET /api/bookings
@@ -75,14 +76,45 @@ const updateBookingStatus = async (req, res) => {
     const { id } = req.params;
     const { status } = req.body;
 
-    const booking = await Booking.findById(id);
+    const booking = await Booking.findById(id).populate('user', 'name email').populate('property', 'title');
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
 
+    const oldStatus = booking.status;
     booking.status = status;
     await booking.save();
+
+    // Create notification for admins when booking status changes
+    if (oldStatus !== status) {
+      try {
+        // Get all admin users
+        const adminUsers = await User.find({ role: 'admin' });
+
+        for (const admin of adminUsers) {
+          await createNotification({
+            userId: admin._id,
+            title: `Booking Status Updated`,
+            message: `Booking for "${booking.property.title}" by ${booking.user.name} has been ${status}`,
+            type: status === 'confirmed' ? 'success' : status === 'cancelled' ? 'warning' : 'info',
+            category: 'booking',
+            priority: 'medium',
+            metadata: {
+              bookingId: booking._id,
+              propertyId: booking.property._id,
+              userId: booking.user._id,
+              oldStatus,
+              newStatus: status,
+            },
+            actionUrl: `/dashboard/bookings/${booking._id}`,
+          });
+        }
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError);
+        // Don't fail the booking update if notification creation fails
+      }
+    }
 
     res.json({ message: "Booking status updated successfully", booking });
   } catch (error) {
