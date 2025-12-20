@@ -26,10 +26,25 @@ const createProperty = asyncHandler(async (req, res) => {
 
   const images = req.files ? req.files.map((file) => file.path) : [];
 
-  if (images.length === 0) {
-    res.status(400);
-    throw new Error("No images uploaded");
-  }
+  // Log the received data for debugging
+  //  console.log("Received property data:", {
+  //     title,
+  //     description,
+  //     deal,
+  //     type,
+  //     propertyCategory,
+  //     area,
+  //     availability,
+  //     furnishing,
+  //     price,
+  //     postedBy,
+  //     rawLocation,
+  //     commercialPropertyTypes,
+  //     investmentOptions,
+  //     facilities,
+  //     imagesCount: images.length,
+  //     user: req.user?._id
+  //   });
 
   const location =
     typeof rawLocation === "string" ? JSON.parse(rawLocation) : rawLocation;
@@ -216,10 +231,10 @@ const updateProperty = asyncHandler(async (req, res) => {
     isActive,
   } = req.body;
 
-  const newImages = req.files
-    ? req.files.map((file) => file.path)
-    : [];
-  const images = existingImages ? [...JSON.parse(existingImages), ...newImages] : property.image;
+  const newImages = req.files ? req.files.map((file) => file.path) : [];
+  const images = existingImages
+    ? [...JSON.parse(existingImages), ...newImages]
+    : property.image;
 
   property.title = title || property.title;
   property.description = description || property.description;

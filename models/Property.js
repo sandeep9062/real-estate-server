@@ -19,6 +19,8 @@ const locationSchema = new mongoose.Schema({
 
 locationSchema.index({ coordinates: "2dsphere" });
 
+
+
 const propertySchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
@@ -187,7 +189,7 @@ const propertySchema = new mongoose.Schema(
 
     image: {
       type: [String],
-      required: true,
+      required: false, // Temporarily made optional to debug the issue
     },
     videoUrl: String,
     floor: Number,
@@ -302,12 +304,14 @@ const propertySchema = new mongoose.Schema(
     //   type: Number,
     //   default: 30,
     // },
+
     // nearbyInstitutes: [
     //   {
     //     name: String,
     //     distanceInKm: Number,
     //   },
     // ],
+    
     // studentAmenities: [
     //   {
     //     type: String,

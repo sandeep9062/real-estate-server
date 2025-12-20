@@ -1,5 +1,7 @@
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
+import { createNotification } from './notificationController.js';
+
 // @desc    Get all users
 // @route   GET /api/users
 // @access  Private/Admin
@@ -129,7 +131,7 @@ export const updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Profile update error:", error);
-    res.status(500).json({ message: "Server Error" });
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -230,6 +232,14 @@ export const bookVisit = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Get property details for notification
+    const Property = (await import('../models/Property.js')).default;
+    const property = await Property.findById(propertyId);
+
+    if (!property) {
+      return res.status(404).json({ message: "Property not found" });
+    }
+
     // Create a new booking
     const newBooking = new Booking({
       user: req.user._id,
@@ -241,6 +251,54 @@ export const bookVisit = async (req, res) => {
     // Add booking to user's bookedVisits
     user.bookedVisits.push(newBooking._id);
     await user.save();
+
+    // Create notification for property owner
+    if (property.user.toString() !== req.user._id.toString()) {
+      try {
+        await createNotification({
+          userId: property.user,
+          title: `New Visit Booking`,
+          message: `${user.name} has booked a visit for your property "${property.title}" on ${new Date(date).toLocaleDateString()}`,
+          type: 'success',
+          category: 'booking',
+          priority: 'high',
+          metadata: {
+            bookingId: newBooking._id,
+            propertyId: property._id,
+            userId: user._id,
+            visitDate: date,
+          },
+          actionUrl: `/dashboard/bookings/${newBooking._id}`,
+        });
+      } catch (notificationError) {
+        console.error('Error creating owner notification:', notificationError);
+      }
+    }
+
+    // Create notification for admins
+    try {
+      const adminUsers = await User.find({ role: 'admin' });
+
+      for (const admin of adminUsers) {
+        await createNotification({
+          userId: admin._id,
+          title: `New Booking Received`,
+          message: `New visit booking for "${property.title}" by ${user.name} for ${new Date(date).toLocaleDateString()}`,
+          type: 'info',
+          category: 'booking',
+          priority: 'medium',
+          metadata: {
+            bookingId: newBooking._id,
+            propertyId: property._id,
+            userId: user._id,
+            visitDate: date,
+          },
+          actionUrl: `/dashboard/bookings/${newBooking._id}`,
+        });
+      }
+    } catch (notificationError) {
+      console.error('Error creating admin notifications:', notificationError);
+    }
 
     const populatedUser = await User.findById(req.user._id)
       .populate("bookedVisits")

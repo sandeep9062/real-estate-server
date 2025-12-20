@@ -78,6 +78,55 @@ app.use("/api/chatbot", chatbotRouter);
 app.use("/api/v1/subscription", subscriptionRouter);
 app.use("/api/v1/workflows", workflowRouter);
 
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  
+  // Handle validation errors
+  if (err.name === 'ValidationError') {
+    return res.status(400).json({
+      message: 'Validation Error',
+      details: Object.values(err.errors).map(e => e.message)
+    });
+  }
+  
+  // Handle JWT errors
+  if (err.name === 'JsonWebTokenError') {
+    return res.status(401).json({
+      message: 'Invalid token'
+    });
+  }
+  
+  if (err.name === 'TokenExpiredError') {
+    return res.status(401).json({
+      message: 'Token expired'
+    });
+  }
+  
+  // Handle multer errors
+  if (err.code === 'LIMIT_FILE_SIZE') {
+    return res.status(400).json({
+      message: 'File too large'
+    });
+  }
+  
+  // Default error
+  const status = err.status || 500;
+  const message = err.message || 'Internal Server Error';
+  
+  res.status(status).json({
+    message,
+    ...(process.env.NODE_ENV === 'development' && { stack: err.stack })
+  });
+});
+
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    message: 'Route not found'
+  });
+});
+
 // Start server
 app.listen(PORT, () => {
   console.log(`✅ Server Running at http://localhost:${PORT}`);
