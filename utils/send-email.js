@@ -22,8 +22,7 @@ const sendEmail = async ({ to, subject, html }) => {
     },
   });
 
-  // VERIFY SMTP CONNECTION
-  await transporter.verify();
+
 
   // SEND MAIL
   await transporter.sendMail({

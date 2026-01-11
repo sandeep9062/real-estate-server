@@ -234,11 +234,16 @@ export const forgotPassword = async (req, res) => {
     const resetLink = `${isDevelopment ? 'http://localhost:3000' : (process.env.FRONTEND_URL || 'http://localhost:3000')}/auth/reset-password/${resetToken}`;
 
     // Send email
-    const emailResult = await sendForgotPasswordEmail({
-      to: email,
-      userName: user.name,
-      resetLink: resetLink,
-    });
+    try {
+      const emailResult = await sendForgotPasswordEmail({
+        to: email,
+        userName: user.name,
+        resetLink: resetLink,
+      });
+    } catch (emailError) {
+      console.error("Failed to send forgot password email:", emailError);
+      // Don't fail the request if email sending fails, just log it
+    }
 
     // In development mode, the email is not sent, but token is generated and link is logged
     if (isDevelopment) {
