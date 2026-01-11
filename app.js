@@ -1,5 +1,4 @@
-import dotenv from "dotenv";
-dotenv.config();
+import "./config/env.js";
 
 import express from "express";
 import cors from "cors";
@@ -17,7 +16,7 @@ import bookingRoutes from "./routes/bookingRoutes.js";
 import chatbotRouter from "./routes/chatbotRoutes.js";
 import dashboardRoutes from "./routes/dashboardRoutes.js";
 import notificationRoutes from "./routes/notificationRoutes.js";
-
+import aiRoutes from "./routes/aiRoutes.js";
 import arcjetMiddleware from "./middlewares/arcjet.middleware.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import workflowRouter from "./routes/workflow.routes.js";
@@ -29,6 +28,7 @@ const PORT = process.env.PORT || 9000;
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.set("trust proxy", true);
 
 app.use(cookieParser());
 if (process.env.NODE_ENV === "production") {
@@ -74,7 +74,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
 
 app.use("/api/chatbot", chatbotRouter);
-
+app.use("/api/ai", aiRoutes);
 app.use("/api/v1/subscription", subscriptionRouter);
 app.use("/api/v1/workflows", workflowRouter);
 

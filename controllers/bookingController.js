@@ -46,8 +46,13 @@ const deleteBooking = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user._id;
+    const isAdmin = req.user.role === 'admin';
 
-    const booking = await Booking.findOne({ property: id, user: userId });
+    // Find the booking - admins can delete any booking, users can only delete their own
+    const booking = await Booking.findOne({ 
+      _id: id, 
+      ...(isAdmin ? {} : { user: userId }) 
+    });
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
@@ -57,7 +62,7 @@ const deleteBooking = async (req, res) => {
     await booking.deleteOne();
 
     // Pull the booking reference from the user's bookedVisits array
-    await User.findByIdAndUpdate(userId, {
+    await User.findByIdAndUpdate(booking.user._id, {
       $pull: { bookedVisits: booking._id },
     });
 

@@ -1,11 +1,14 @@
 import nodemailer from "nodemailer";
 
-export const accountEmail = "sandeepsaini157219@gmail.com";
-
 export const transporter = nodemailer.createTransport({
-  service: "gmail",
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true, // use SSL
   auth: {
-    user: accountEmail,
+    user: process.env.OWNER_EMAIL,
     pass: process.env.EMAIL_PASSWORD,
   },
+  tls: {
+    rejectUnauthorized: false
+  }
 });

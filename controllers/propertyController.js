@@ -277,55 +277,73 @@ const updateProperty = asyncHandler(async (req, res) => {
 // @access  Private (Admin or Owner)
 
 const deleteProperty = asyncHandler(async (req, res) => {
-  const property = await Property.findById(req.params.id);
+  const session = await mongoose.startSession();
+  session.startTransaction();
 
-  if (!property) {
-    res.status(404);
-    throw new Error("Property not found");
-  }
+  try {
+    const property = await Property.findById(req.params.id).session(session);
 
-  const isOwner = property.user.toString() === req.user._id.toString();
-  const isAdmin = req.user.role === "admin";
+    if (!property) {
+      res.status(404);
+      throw new Error("Property not found");
+    }
 
-  if (!isOwner && !isAdmin) {
-    res.status(403);
-    throw new Error("Not authorized to delete this property");
-  }
+    //const isOwner = property.user.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === "admin";
 
-  // 1️⃣ Soft delete the property
-  property.deletedAt = new Date();
-  property.isActive = false;
-  await property.save();
+    if (!isAdmin) {
+      res.status(403);
+      throw new Error("Not authorized to delete this property");
+    }
 
-  // 2️⃣ Remove property from ALL users' favorites
-  await User.updateMany(
-    { favProperties: property._id },
-    { $pull: { favProperties: property._id } }
-  );
+    // 1️⃣ Remove property from ALL users' favorites
+    await User.updateMany(
+      { favProperties: property._id },
+      { $pull: { favProperties: property._id } },
+      { session }
+    );
 
-  // 3️⃣ Delete all bookings related to this property
-  const deletedBookings = await Booking.find({ property: property._id });
+    // 2️⃣ Find & delete all bookings related to this property
+    const bookings = await Booking.find(
+      { property: property._id },
+      { _id: 1 }
+    ).session(session);
 
-  await Booking.deleteMany({ property: property._id });
+    const bookingIds = bookings.map((b) => b._id);
 
-  // 4️⃣ Remove deleted bookings from users' bookedVisits
-  const bookingIds = deletedBookings.map((b) => b._id);
+    await Booking.deleteMany({ property: property._id }, { session });
 
-  await User.updateMany(
-    { bookedVisits: { $in: bookingIds } },
-    { $pull: { bookedVisits: { $in: bookingIds } } }
-  );
+    // 3️⃣ Remove deleted bookings from users' bookedVisits
+    if (bookingIds.length) {
+      await User.updateMany(
+        { bookedVisits: { $in: bookingIds } },
+        { $pull: { bookedVisits: { $in: bookingIds } } },
+        { session }
+      );
+    }
 
-  // 5️⃣ Remove from property owner's list (only if admin deletes)
-  if (isAdmin && !isOwner) {
-    await User.findByIdAndUpdate(property.user, {
-      $pull: { ownedProperties: property._id },
+    // 4️⃣ Remove property from owner's ownedProperties
+    await User.findByIdAndUpdate(
+      property.user,
+      { $pull: { ownedProperties: property._id } },
+      { session }
+    );
+
+    // 5️⃣ Permanently delete the property
+    await Property.findByIdAndDelete(property._id).session(session);
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({
+      success: true,
+      message: "Property permanently deleted",
     });
+  } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
+    throw error;
   }
-
-  res.json({
-    message: "Property deleted. Favorites and bookings cleaned up.",
-  });
 });
 
 // @desc    Get properties owned by authenticated user

@@ -10,6 +10,8 @@ const locationSchema = new mongoose.Schema({
     type: String,
   },
 
+  slug: { type: String, unique: true },
+
   pincode: { type: String },
   coordinates: {
     type: { type: String, enum: ["Point"], default: "Point" },
@@ -18,8 +20,6 @@ const locationSchema = new mongoose.Schema({
 });
 
 locationSchema.index({ coordinates: "2dsphere" });
-
-
 
 const propertySchema = new mongoose.Schema(
   {
@@ -34,6 +34,14 @@ const propertySchema = new mongoose.Schema(
       index: true,
     },
 
+    ai: {
+      description: String,
+      matchScore: Number,
+      reasons: [String],
+      warning: String,
+      seoTitle: String,
+      seoDescription: String,
+    },
     type: {
       type: String,
       enum: ["Residential", "Commercial"],
@@ -311,7 +319,7 @@ const propertySchema = new mongoose.Schema(
     //     distanceInKm: Number,
     //   },
     // ],
-    
+
     // studentAmenities: [
     //   {
     //     type: String,

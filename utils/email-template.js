@@ -65,6 +65,80 @@ export const generateEmailTemplate = ({
     </table>
 </div>
 `;
+export const generateForgotPasswordTemplate = ({ userName, resetLink }) => `
+<div style="background-color: #f1f5f9; padding: 40px 20px; font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #1e293b;">
+  <table align="center" border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);">
+    
+    <tr>
+      <td style="padding: 40px 40px 20px 40px; text-align: left;">
+        <div style="color: #4f46e5; font-size: 24px; font-weight: 800; letter-spacing: -0.5px; border-left: 4px solid #4f46e5; padding-left: 15px;">
+          PROPERTY BULBUL
+        </div>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding: 20px 40px 40px 40px;">
+        <h1 style="margin: 0 0 16px; font-size: 22px; font-weight: 700; color: #0f172a;">Password Reset Request</h1>
+        <p style="margin: 0 0 24px; font-size: 16px; line-height: 1.6; color: #475569;">
+          Hello ${userName},<br><br>
+          We received a request to reset the password for your Property Bulbul account. To proceed with the update, please click the secure button below:
+        </p>
+
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="margin: 30px 0;">
+          <tr>
+            <td align="center">
+              <a href="${resetLink}" style="background-color: #4f46e5; color: #ffffff; padding: 16px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px; display: inline-block;">
+                Reset My Password
+              </a>
+            </td>
+          </tr>
+        </table>
+
+        <div style="background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px;">
+          <table border="0" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="vertical-align: top; padding-right: 12px; font-size: 18px;">🛡️</td>
+              <td>
+                <p style="margin: 0; font-size: 14px; color: #64748b; line-height: 1.5;">
+                  <strong>Security Alert:</strong> This link will expire in <strong>15 minutes</strong> for your protection. If you did not initiate this request, no further action is required; your account remains secure.
+                </p>
+              </td>
+            </tr>
+          </table>
+        </div>
+
+        <p style="margin: 32px 0 8px; font-size: 13px; color: #94a3b8; text-align: center;">
+          Trouble clicking the button? Copy and paste the URL below into your browser:
+        </p>
+        <p style="margin: 0; font-size: 12px; color: #6366f1; word-break: break-all; text-align: center; background: #fdfdfd; padding: 10px; border: 1px dashed #cbd5e1; border-radius: 4px;">
+          ${resetLink}
+        </p>
+      </td>
+    </tr>
+
+    <tr>
+      <td style="padding: 40px; background-color: #f8fafc; border-top: 1px solid #f1f5f9; text-align: center;">
+        <p style="margin: 0 0 8px; font-size: 14px; color: #475569; font-weight: 600;">Property Bulbul</p>
+        <p style="margin: 0 0 24px; font-size: 13px; color: #94a3b8;">Smart Real Estate Management, Simplified</p>
+        
+        <table align="center" border="0" cellpadding="0" cellspacing="0" style="margin-bottom: 24px;">
+          <tr>
+            <td style="font-size: 12px; color: #cbd5e1;">
+              &copy; 2026 Property Bulbul | Sandeep Saini
+            </td>
+          </tr>
+        </table>
+        
+        <p style="margin: 0; font-size: 11px; color: #cbd5e1; line-height: 1.4;">
+          This is a mandatory system notification regarding your account security.<br>
+          Please do not reply to this email.
+        </p>
+      </td>
+    </tr>
+  </table>
+</div>
+`;
 
 export const emailTemplates = [
   {
@@ -90,5 +164,10 @@ export const emailTemplates = [
     generateSubject: (data) =>
       `⚡ Final Reminder: ${data.subscriptionName} Renews Tomorrow!`,
     generateBody: (data) => generateEmailTemplate({ ...data, daysLeft: 1 }),
+  },
+  {
+    label: "forgot-password",
+    generateSubject: () => "🔐 Reset Your Password - Tricity Real Estate",
+    generateBody: (data) => generateForgotPasswordTemplate(data),
   },
 ];

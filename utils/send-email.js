@@ -1,36 +1,93 @@
-import { emailTemplates } from "./email-template.js";
-import dayjs from "dayjs";
-import { transporter, accountEmail } from "../config/nodemailer.js";
+import nodemailer from "nodemailer";
+import { generateForgotPasswordTemplate, generateEmailTemplate } from "./email-template.js";
+console.log("AUTH OBJECT:", {
+  user: process.env.EMAIL_USER,
+  pass: process.env.EMAIL_PASS ? "LOADED" : "MISSING",
+});
 
-export const sendReminderEmail = async ({ to, type, subscription }) => {
-  if (!to || !type) throw new Error("Missing required parameters");
+const sendEmail = async ({ to, subject, html }) => {
+  // HARD FAIL if creds missing
+  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+    throw new Error("EMAIL credentials missing at sendEmail()");
+  }
 
-  const template = emailTemplates.find((t) => t.label === type);
+  // CREATE TRANSPORTER INSIDE FUNCTION (IMPORTANT)
+  const transporter = nodemailer.createTransport({
+    host: process.env.EMAIL_HOST,
+    port: Number(process.env.EMAIL_PORT),
+    secure: false, // MUST be false for 587
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
 
-  if (!template) throw new Error("Invalid email type");
+  // VERIFY SMTP CONNECTION
+  await transporter.verify();
 
-  const mailInfo = {
-    userName: subscription.user.name,
-    subscriptionName: subscription.name,
-    renewalDate: dayjs(subscription.renewalDate).format("MMM D, YYYY"),
-    planName: subscription.name,
-    price: `${subscription.currency} ${subscription.price} (${subscription.frequency})`,
-    paymentMethod: subscription.paymentMethod,
-  };
-
-  const message = template.generateBody(mailInfo);
-  const subject = template.generateSubject(mailInfo);
-
-  const mailOptions = {
-    from: accountEmail,
-    to: to,
-    subject: subject,
-    html: message,
-  };
-
-  transporter.sendMail(mailOptions, (error, info) => {
-    if (error) return console.log(error, "Error sending email");
-
-    console.log("Email sent: " + info.response);
+  // SEND MAIL
+  await transporter.sendMail({
+    from: process.env.EMAIL_FROM,
+    to,
+    subject,
+    html,
   });
 };
+
+export const sendForgotPasswordEmail = async ({ to, userName, resetLink }) => {
+  const subject = "🔐 Reset Your Password - Tricity Real Estate";
+  const html = generateForgotPasswordTemplate({ userName, resetLink });
+
+  return await sendEmail({ to, subject, html });
+};
+
+export const sendReminderEmail = async ({ to, type, subscription }) => {
+  // Extract days left from type (e.g., "Reminder 7 days before" -> 7)
+  const daysMatch = type.match(/(\d+)/);
+  const daysLeft = daysMatch ? parseInt(daysMatch[1]) : 7;
+
+  // Format renewal date
+  const renewalDate = new Date(subscription.renewalDate).toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  });
+
+  // Prepare template data
+  const templateData = {
+    userName: subscription.user.name,
+    subscriptionName: subscription.name,
+    renewalDate,
+    planName: subscription.name,
+    price: `${subscription.currency} ${subscription.price}`,
+    paymentMethod: subscription.paymentMethod,
+    accountSettingsLink: '#', // Placeholder - would need actual link
+    supportLink: '#', // Placeholder - would need actual link
+    daysLeft,
+  };
+
+  // Generate subject based on days left
+  let subject;
+  switch (daysLeft) {
+    case 7:
+      subject = `📅 Reminder: Your ${subscription.name} Subscription Renews in 7 Days!`;
+      break;
+    case 5:
+      subject = `⏳ ${subscription.name} Renews in 5 Days – Stay Subscribed!`;
+      break;
+    case 2:
+      subject = `🚀 2 Days Left!  ${subscription.name} Subscription Renewal`;
+      break;
+    case 1:
+      subject = `⚡ Final Reminder: ${subscription.name} Renews Tomorrow!`;
+      break;
+    default:
+      subject = `📅 Subscription Renewal Reminder - ${subscription.name}`;
+  }
+
+  const html = generateEmailTemplate(templateData);
+
+  return await sendEmail({ to, subject, html });
+};
+
+export default sendEmail;

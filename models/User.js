@@ -38,6 +38,8 @@ const userSchema = mongoose.Schema(
     ownedProperties: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
     ],
+    resetPasswordToken: String,
+    resetPasswordExpire: Date,
   },
   {
     timestamps: true,

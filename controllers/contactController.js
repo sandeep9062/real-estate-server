@@ -1,4 +1,4 @@
-import Contact from '../models/Contact.js';
+import Contact from "../models/Contact.js";
 
 // @desc    Create a new contact message
 // @route   POST /api/v1/contact
@@ -19,13 +19,26 @@ export const createContact = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: 'Your message has been sent successfully!',
+      message: "Your message has been sent successfully!",
       data: newContact,
     });
   } catch (error) {
     res.status(500).json({
       success: false,
-      message: 'Server Error',
+      message: "Server Error",
+      error: error.message,
+    });
+  }
+};
+
+export const getAllContact = async (req, res) => {
+  try {
+    const Contacts = await Contact.find({});
+    res.status(200).json(Contacts);
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: "Server Error",
       error: error.message,
     });
   }

@@ -7,6 +7,7 @@ import axios from "axios";
 import generateToken from "../utils/generateToken.js";
 import { OAuth2Client } from "google-auth-library";
 import { createNotification } from "./notificationController.js";
+import { sendForgotPasswordEmail } from "../utils/send-email.js";
 
 const client = new OAuth2Client("YOUR_GOOGLE_CLIENT_ID");
 
@@ -228,9 +229,30 @@ export const forgotPassword = async (req, res) => {
     user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 min expiry
     await user.save();
 
-    res.status(200).json({ message: "Password reset email sent successfully" });
+    // Create reset link - use localhost in development, production URL otherwise
+    const isDevelopment = process.env.NODE_ENV === 'development';
+    const resetLink = `${isDevelopment ? 'http://localhost:3000' : (process.env.FRONTEND_URL || 'http://localhost:3000')}/auth/reset-password/${resetToken}`;
+
+    // Send email
+    const emailResult = await sendForgotPasswordEmail({
+      to: email,
+      userName: user.name,
+      resetLink: resetLink,
+    });
+
+    // In development mode, the email is not sent, but token is generated and link is logged
+    if (isDevelopment) {
+      console.log("🔄 Forgot password token generated for development testing");
+      console.log("📧 Email sending skipped in development mode - use the link above for testing");
+    }
+
+    res.status(200).json({
+      message: isDevelopment ? "Password reset link generated for development testing" : "Password reset email sent successfully",
+      ...(isDevelopment && { resetLink }) // Include link in development response
+    });
   } catch (error) {
-    res.status(500).json({ message: "Error sending reset email", error });
+    console.error("Forgot password error:", error);
+    res.status(500).json({ message: "Error sending reset email", error: error.message });
   }
 };
 
