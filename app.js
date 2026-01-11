@@ -32,7 +32,10 @@ app.set("trust proxy", true);
 
 app.use(cookieParser());
 if (process.env.NODE_ENV === "production") {
+  console.log("🔒 Arcjet middleware enabled for production");
   app.use(arcjetMiddleware);
+} else {
+  console.log("🔓 Arcjet middleware disabled for development");
 }
 
 const allowedOrigins = [
