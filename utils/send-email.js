@@ -34,7 +34,7 @@ const sendEmail = async ({ to, subject, html }) => {
 };
 
 export const sendForgotPasswordEmail = async ({ to, userName, resetLink }) => {
-  const subject = "🔐 Reset Your Password - Tricity Real Estate";
+  const subject = "🔐 Reset Your Password - Property Bulbul (Tricity Real Estate Partner)";
   const html = generateForgotPasswordTemplate({ userName, resetLink });
 
   return await sendEmail({ to, subject, html });
