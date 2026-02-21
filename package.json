@@ -12,13 +12,13 @@
   "license": "ISC",
   "type": "module",
   "dependencies": {
-    "@arcjet/inspect": "^1.0.0-beta.15",
-    "@arcjet/node": "^1.0.0-beta.15",
     "@google/generative-ai": "^0.24.1",
     "@upstash/workflow": "^0.2.22",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
+    "better-auth": "^1.4.18",
     "body-parser": "^2.2.0",
+    "cloudinary": "^2.9.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dayjs": "^1.11.19",
@@ -28,9 +28,12 @@
     "fuse.js": "^7.1.0",
     "google-auth-library": "^10.5.0",
     "jsonwebtoken": "^9.0.2",
+    "mongodb": "^7.1.0",
     "mongoose": "^9.0.2",
     "multer": "^2.0.2",
     "multer-storage-cloudinary": "^4.0.0",
-    "nodemailer": "^7.0.11"
+    "node-cron": "^4.2.1",
+    "nodemailer": "^7.0.11",
+    "uuid": "^13.0.0"
   }
 }

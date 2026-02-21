@@ -28,7 +28,7 @@ const userSchema = mongoose.Schema(
     },
     password: {
       type: String,
-      required: true,
+      // Optional for OAuth/Better Auth users
     },
     image: {
       type: String,
@@ -47,11 +47,16 @@ const userSchema = mongoose.Schema(
 );
 
 userSchema.methods.matchPassword = async function (enteredPassword) {
+  // If user has no password (OAuth user), return false
+  if (!this.password) {
+    return false;
+  }
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
 userSchema.pre("save", async function () {
-  if (!this.isModified("password")) {
+  // Skip if password is not modified or not provided (OAuth users)
+  if (!this.isModified("password") || !this.password) {
     return;
   }
 

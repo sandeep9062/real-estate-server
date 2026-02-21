@@ -24,7 +24,7 @@ const router = express.Router();
 router.put("/profile-update", protect, upload.single("image"), updateProfile);
 
 // ✅ Get logged-in user's profile
-router.get("/profile", userProfile);
+router.get("/profile", protect, userProfile);
 
 // ✅ Get all favourite properties of a user
 router.get("/favourites", protect, userFavourites);
