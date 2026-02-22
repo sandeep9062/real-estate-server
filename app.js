@@ -37,7 +37,10 @@ const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
   "https://www.propertybulbul.com",
-];
+  "https://propertybulbul.com",
+  // Add production frontend URL from environment variable
+  process.env.FRONTEND_URL,
+].filter(Boolean); // Remove any undefined values
 
 app.use(
   cors({
