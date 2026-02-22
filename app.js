@@ -2,7 +2,6 @@ import "./config/env.js";
 
 import express from "express";
 import cors from "cors";
-import jwt from "jsonwebtoken";
 import connectDB from "./config/db.js";
 import cookieParser from "cookie-parser";
 import cron from "node-cron";

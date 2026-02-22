@@ -137,7 +137,7 @@ export const auth = betterAuth({
       },
     },
   },
-  secret: process.env.JWT_SECRET || "your-secret-key-here",
+  secret: process.env.BETTER_AUTH_SECRET || "your-secret-key-here",
   trustedOrigins: [
     "http://localhost:3000",
     "http://localhost:3001",

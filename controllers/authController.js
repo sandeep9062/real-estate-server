@@ -1,296 +1,26 @@
 import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
 import User from "../models/User.js";
 import crypto from "crypto";
-import axios from "axios";
-
-import generateToken from "../utils/generateToken.js";
-import { OAuth2Client } from "google-auth-library";
 import { createNotification } from "./notificationController.js";
 import { sendForgotPasswordEmail } from "../utils/send-email.js";
+import { auth } from "../config/auth.js";
 
-const client = new OAuth2Client("YOUR_GOOGLE_CLIENT_ID");
-
-// ==================
-// NORMAL SIGNUP
-// ==================
-export const registerUser = async (req, res) => {
-  try {
-    const { name, email, phone, password, role } = req.body;
-
-    // Basic validation
-    if (!name || !email || !phone || !password) {
-      return res.status(400).json({ message: "Please fill in all fields" });
-    }
-
-    const existingUser = await User.findOne({ email });
-    if (existingUser)
-      return res.status(400).json({ message: "User already exists" });
-
-    const user = await User.create({
-      name,
-      email,
-      phone,
-      password,
-      role: role || "user", // Default role to 'user' if not provided
-    });
-
-    // Create notifications for admins when a new user registers
-    try {
-      const adminUsers = await User.find({ role: 'admin' });
-
-      for (const admin of adminUsers) {
-        await createNotification({
-          userId: admin._id,
-          title: `New User Registration`,
-          message: `${name} (${email}) has registered as a ${user.role}`,
-          type: 'info',
-          category: 'user',
-          priority: 'low',
-          metadata: {
-            userId: user._id,
-            userEmail: email,
-            userRole: user.role,
-          },
-          actionUrl: `/dashboard/users/${user._id}`,
-        });
-      }
-    } catch (notificationError) {
-      console.error('Error creating user registration notification:', notificationError);
-      // Don't fail registration if notification creation fails
-    }
-
-    const token = generateToken(user);
-
-    res.status(201).json({
-      user: {
-        _id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
-        image: user.image,
-        favProperties: user.favProperties || [],
-        bookedVisits: user.bookedVisits || [],
-        ownedProperties: user.ownedProperties || [],
-      },
-      token,
-      message: "user Registered Succesfully",
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
-// ==================
-// NORMAL LOGIN
-// ==================
-export const loginUser = async (req, res) => {
-  try {
-    const { emailOrPhone, password } = req.body;
-
-    const user = await User.findOne({
-      $or: [{ email: emailOrPhone }, { phone: emailOrPhone }],
-    }).populate("favProperties");
-
-    if (!user) return res.status(400).json({ message: "User not found" });
-
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
-      return res.status(400).json({ message: "Invalid credentials" });
-
-    const token = generateToken(user);
-
-    const {
-      _id,
-      name,
-      email,
-      role,
-      phone,
-      favProperties,
-      image,
-      bookedVisits,
-      ownedProperties,
-    } = user;
-    res.status(200).json({
-      user: {
-        _id,
-        name,
-        email,
-        role,
-        phone,
-        favProperties,
-        image,
-        bookedVisits,
-        ownedProperties,
-      },
-      token,
-      role: user.role,
-      message: "User Logged in succesfully",
-    });
-  } catch (error) {
-    res.status(500).json({ message: "Server error", error });
-  }
-};
-
-// ==================
-// GOOGLE LOGIN/SIGNUP
-// ==================
-export const googleAuth = async (req, res) => {
-  try {
-    const { token } = req.body;
-
-    const ticket = await client.verifyIdToken({
-      idToken: token,
-      audience: "YOUR_GOOGLE_CLIENT_ID",
-    });
-
-    const payload = ticket.getPayload();
-
-    const { sub: googleId, email, name, picture } = payload;
-
-    let user = await User.findOne({ email });
-
-    if (user) {
-      // If user exists, generate token and send back
-
-      const jwtToken = generateToken(user);
-      return res.status(200).json({ user, token: jwtToken });
-    }
-
-    // If new user, create account
-    const password = Math.random().toString(36).slice(-8);
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    user = await User.create({
-      name,
-      email,
-      password: hashedPassword,
-      googleId,
-      role: "user", // default role; can update later
-      image: picture,
-    });
-
-    // Create notifications for admins when a new user registers via Google
-    try {
-      const adminUsers = await User.find({ role: 'admin' });
-
-      for (const admin of adminUsers) {
-        await createNotification({
-          userId: admin._id,
-          title: `New User Registration (Google)`,
-          message: `${name} (${email}) has registered via Google as a ${user.role}`,
-          type: 'info',
-          category: 'user',
-          priority: 'low',
-          metadata: {
-            userId: user._id,
-            userEmail: email,
-            userRole: user.role,
-            registrationMethod: 'google',
-          },
-          actionUrl: `/dashboard/users/${user._id}`,
-        });
-      }
-    } catch (notificationError) {
-      console.error('Error creating Google user registration notification:', notificationError);
-      // Don't fail registration if notification creation fails
-    }
-
-    const jwtToken = generateToken(user);
-    res.status(200).json({ user, token: jwtToken });
-  } catch (error) {
-    console.error("Google authentication error:", error);
-    res.status(500).json({ message: "Google authentication failed", error });
-  }
-};
-
-// ============================
-// FORGOT PASSWORD
-// ============================
-export const forgotPassword = async (req, res) => {
-  try {
-    const { email } = req.body;
-
-    const user = await User.findOne({ email });
-    if (!user)
-      return res
-        .status(404)
-        .json({ message: "User not found with this email" });
-
-    // Generate secure reset token
-    const resetToken = crypto.randomBytes(32).toString("hex");
-    const hashedToken = crypto
-      .createHash("sha256")
-      .update(resetToken)
-      .digest("hex");
-
-    // Save hashed token to DB
-    user.resetPasswordToken = hashedToken;
-    user.resetPasswordExpire = Date.now() + 15 * 60 * 1000; // 15 min expiry
-    await user.save();
-
-    // Create reset link - use localhost in development, production URL otherwise
-    const isDevelopment = process.env.NODE_ENV === 'development';
-    const resetLink = `${isDevelopment ? 'http://localhost:3000' : (process.env.FRONTEND_URL || 'http://localhost:3000')}/auth/reset-password/${resetToken}`;
-
-    // Send email
-    try {
-      const emailResult = await sendForgotPasswordEmail({
-        to: email,
-        userName: user.name,
-        resetLink: resetLink,
-      });
-    } catch (emailError) {
-      console.error("Failed to send forgot password email:", emailError);
-      // Don't fail the request if email sending fails, just log it
-    }
-
-    // In development mode, the email is not sent, but token is generated and link is logged
-    if (isDevelopment) {
-      console.log("🔄 Forgot password token generated for development testing");
-      console.log("📧 Email sending skipped in development mode - use the link above for testing");
-    }
-
-    res.status(200).json({
-      message: isDevelopment ? "Password reset link generated for development testing" : "Password reset email sent successfully",
-      ...(isDevelopment && { resetLink }) // Include link in development response
-    });
-  } catch (error) {
-    console.error("Forgot password error:", error);
-    res.status(500).json({ message: "Error sending reset email", error: error.message });
-  }
-};
-
-// ===========================
-// RESET PASSWORD
-// ===========================
-export const resetPassword = async (req, res) => {
-  try {
-    const { token } = req.params;
-    const { password } = req.body;
-
-    const hashedToken = crypto.createHash("sha256").update(token).digest("hex");
-
-    const user = await User.findOne({
-      resetPasswordToken: hashedToken,
-      resetPasswordExpire: { $gt: Date.now() },
-    });
-
-    if (!user)
-      return res.status(400).json({ message: "Invalid or expired token" });
-
-    // Update password & clear token fields
-    user.password = password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
-
-    await user.save();
-
-    res.status(200).json({ message: "Password reset successful" });
-  } catch (error) {
-    res.status(500).json({ message: "Error resetting password", error });
-  }
-};
+/**
+ * Authentication Controller
+ * 
+ * This controller works alongside Better Auth to provide:
+ * - Additional user management functionality
+ * - Password change for authenticated users
+ * - User profile operations
+ * 
+ * Better Auth handles:
+ * - Sign up (POST /api/better-auth/sign-up/email)
+ * - Sign in (POST /api/better-auth/sign-in/email)
+ * - Sign out (POST /api/better-auth/sign-out)
+ * - Social login (GET /api/better-auth/sign-in/social)
+ * - Password reset (POST /api/better-auth/forgot-password)
+ * - Session management
+ */
 
 // ==================
 // CHANGE PASSWORD
@@ -307,16 +37,19 @@ export const changePassword = async (req, res) => {
       return res.status(400).json({ message: "New password must be at least 6 characters long" });
     }
 
-    const user = await User.findById(req.user._id);
+    // Get user from database (attached by auth middleware)
+    const user = await User.findById(req.user._id).select("+password");
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
     // Verify current password
-    const isMatch = await user.matchPassword(currentPassword);
-    if (!isMatch) {
-      return res.status(400).json({ message: "Current password is incorrect" });
+    if (user.password) {
+      const isMatch = await user.matchPassword(currentPassword);
+      if (!isMatch) {
+        return res.status(400).json({ message: "Current password is incorrect" });
+      }
     }
 
     // Update password
@@ -326,13 +59,141 @@ export const changePassword = async (req, res) => {
     res.status(200).json({ message: "Password changed successfully" });
   } catch (error) {
     console.error("Change password error:", error);
-    res.status(500).json({ message: "Server error", error });
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
 
 // ==================
-// LOGOUT USER
+// UPDATE USER PROFILE
 // ==================
-export const logoutUser = (req, res) => {
-  res.status(200).json({ message: "Logged out successfully" });
+export const updateProfile = async (req, res) => {
+  try {
+    const { name, phone, image } = req.body;
+    
+    const user = await User.findById(req.user._id);
+    
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    if (name) user.name = name;
+    if (phone) user.phone = phone;
+    if (image) user.image = image;
+
+    await user.save();
+
+    res.status(200).json({
+      message: "Profile updated successfully",
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        image: user.image,
+        role: user.role,
+        favProperties: user.favProperties,
+        bookedVisits: user.bookedVisits,
+        ownedProperties: user.ownedProperties,
+      },
+    });
+  } catch (error) {
+    console.error("Update profile error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// ==================
+// GET CURRENT USER PROFILE
+// ==================
+export const getCurrentUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .select("-password")
+      .populate("favProperties")
+      .populate("bookedVisits")
+      .populate("ownedProperties");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json({ user });
+  } catch (error) {
+    console.error("Get current user error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+// ==================
+// SYNC USER FROM BETTER AUTH
+// ==================
+// This endpoint ensures a user exists in the User collection
+// after signing up with Better Auth
+export const syncUser = async (req, res) => {
+  try {
+    const session = req.session;
+    
+    if (!session || !session.user) {
+      return res.status(401).json({ message: "Not authenticated" });
+    }
+
+    const betterAuthUser = session.user;
+    
+    // Check if user exists in our User collection
+    let user = await User.findOne({ email: betterAuthUser.email });
+
+    if (!user) {
+      // Create user in our collection for backward compatibility
+      // This allows the User model's hooks and methods to work
+      user = await User.create({
+        name: betterAuthUser.name || betterAuthUser.email.split('@')[0],
+        email: betterAuthUser.email,
+        phone: betterAuthUser.phone || '',
+        role: betterAuthUser.role || 'user',
+        image: betterAuthUser.image || '',
+        // No password - Better Auth manages authentication
+        password: undefined,
+      });
+
+      // Create notification for admins
+      try {
+        const adminUsers = await User.find({ role: 'admin' });
+        for (const admin of adminUsers) {
+          await createNotification({
+            userId: admin._id,
+            title: `New User Registration`,
+            message: `${user.name} (${user.email}) has registered`,
+            type: 'info',
+            category: 'user',
+            priority: 'low',
+            metadata: {
+              userId: user._id,
+              userEmail: user.email,
+              userRole: user.role,
+            },
+            actionUrl: `/dashboard/users/${user._id}`,
+          });
+        }
+      } catch (notificationError) {
+        console.error('Error creating notification:', notificationError);
+      }
+    }
+
+    res.status(200).json({
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        image: user.image,
+        role: user.role,
+        favProperties: user.favProperties || [],
+        bookedVisits: user.bookedVisits || [],
+        ownedProperties: user.ownedProperties || [],
+      },
+    });
+  } catch (error) {
+    console.error("Sync user error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
 };
