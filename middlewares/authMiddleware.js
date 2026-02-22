@@ -1,5 +1,6 @@
 import { auth } from "../config/auth.js";
 import User from "../models/User.js";
+import mongoose from "mongoose";
 
 /**
  * Middleware to protect routes using Better Auth sessions
@@ -15,11 +16,66 @@ import User from "../models/User.js";
  */
 export const protect = async (req, res, next) => {
   try {
-    // Get session from Better Auth using the request headers
-    // Better Auth automatically handles cookie-based sessions
-    const session = await auth.api.getSession({
-      headers: req.headers,
-    });
+    let session = null;
+    
+    // First, try to get session from Bearer token (for cross-origin requests)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        // Directly query the session from the database
+        // Better Auth stores sessions in the 'sessions' collection
+        const db = mongoose.connection.db;
+        
+        // Try to find session by token (Better Auth stores it in 'token' field)
+        let sessionDoc = await db.collection('sessions').findOne({ token });
+        
+        // If not found, try with sessionToken field (alternative field name)
+        if (!sessionDoc) {
+          sessionDoc = await db.collection('sessions').findOne({ sessionToken: token });
+        }
+        
+        // Debug: log what we found
+        if (!sessionDoc) {
+          console.log("No session found for token:", token.substring(0, 10) + "...");
+          // List all sessions for debugging (remove in production)
+          const allSessions = await db.collection('sessions').find({}).toArray();
+          console.log("Total sessions in DB:", allSessions.length);
+        }
+        
+        if (sessionDoc) {
+          // Check if session is expired
+          if (sessionDoc.expiresAt && new Date(sessionDoc.expiresAt) < new Date()) {
+            console.log("Session expired");
+          } else {
+            // Get the user associated with this session
+            const userDoc = await db.collection('users').findOne({ 
+              _id: new mongoose.Types.ObjectId(sessionDoc.userId) 
+            });
+            
+            if (userDoc) {
+              session = {
+                user: userDoc,
+                session: sessionDoc
+              };
+            }
+          }
+        }
+      } catch (tokenError) {
+        console.log("Bearer token validation failed:", tokenError.message);
+      }
+    }
+    
+    // If no session from Bearer token, try cookie-based session
+    if (!session || !session.user) {
+      try {
+        session = await auth.api.getSession({
+          headers: req.headers,
+        });
+      } catch (cookieError) {
+        console.log("Cookie session validation failed:", cookieError.message);
+      }
+    }
 
     if (!session || !session.user) {
       return res.status(401).json({ message: "Not authenticated" });
@@ -101,10 +157,48 @@ export const checkAdminOrAgent = (req, res, next) => {
 // Optional middleware - attaches user if authenticated, but doesn't require it
 export const optionalAuth = async (req, res, next) => {
   try {
-    // Try to get session from Better Auth
-    const session = await auth.api.getSession({
-      headers: req.headers,
-    });
+    let session = null;
+    
+    // First, try to get session from Bearer token (for cross-origin requests)
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      try {
+        // Directly query the session from the database
+        const db = mongoose.connection.db;
+        const sessionDoc = await db.collection('sessions').findOne({ token });
+        
+        if (sessionDoc) {
+          // Check if session is expired
+          if (!sessionDoc.expiresAt || new Date(sessionDoc.expiresAt) >= new Date()) {
+            // Get the user associated with this session
+            const userDoc = await db.collection('users').findOne({ 
+              _id: new mongoose.Types.ObjectId(sessionDoc.userId) 
+            });
+            
+            if (userDoc) {
+              session = {
+                user: userDoc,
+                session: sessionDoc
+              };
+            }
+          }
+        }
+      } catch (tokenError) {
+        // Silently continue
+      }
+    }
+    
+    // If no session from Bearer token, try cookie-based session
+    if (!session || !session.user) {
+      try {
+        session = await auth.api.getSession({
+          headers: req.headers,
+        });
+      } catch (cookieError) {
+        // Silently continue
+      }
+    }
 
     if (session && session.user) {
       // Try to find user in our User collection
