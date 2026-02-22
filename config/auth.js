@@ -37,14 +37,6 @@ export const auth = betterAuth({
   database: mongodbAdapter(mongoose.connection, {
     generateId: () => new mongoose.Types.ObjectId().toString(),
   }),
-  // Cookie configuration for cross-site requests in production
-  cookie: {
-    sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
@@ -91,6 +83,11 @@ export const auth = betterAuth({
     cookieCache: {
       enabled: true,
       maxAge: 60 * 5, // 5 minutes
+    },
+    // Cookie settings for cross-site requests
+    cookie: {
+      sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
+      secure: process.env.NODE_ENV === "production",
     },
   },
   account: {
