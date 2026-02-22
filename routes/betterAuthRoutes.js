@@ -13,7 +13,10 @@ router.post("/custom-login", async (req, res) => {
   try {
     const { email, password } = req.body;
 
+    console.log("Custom login attempt for:", email);
+
     if (!email || !password) {
+      console.log("Missing email or password");
       return res.status(400).json({
         success: false,
         message: "Email and password are required",
@@ -23,6 +26,8 @@ router.post("/custom-login", async (req, res) => {
     // Find user in Better Auth's users collection
     const db = mongoose.connection.db;
     const userDoc = await db.collection('users').findOne({ email });
+
+    console.log("User found:", userDoc ? userDoc.email : "No user");
 
     if (!userDoc) {
       return res.status(401).json({
@@ -36,13 +41,18 @@ router.post("/custom-login", async (req, res) => {
     
     // Check if user has password in Better Auth format
     if (userDoc.password) {
+      console.log("Password hash exists, verifying...");
       // Check if it's a hashed password
       if (userDoc.password.startsWith('$2')) {
         isValidPassword = await bcrypt.compare(password, userDoc.password);
+        console.log("bcrypt comparison result:", isValidPassword);
       } else {
         // Plain text comparison (shouldn't happen but just in case)
         isValidPassword = password === userDoc.password;
+        console.log("Plain text comparison result:", isValidPassword);
       }
+    } else {
+      console.log("No password stored for user");
     }
 
     if (!isValidPassword) {
@@ -273,19 +283,16 @@ router.post("/custom-logout", async (req, res) => {
 // Using middleware pattern to handle all routes for better-auth
 const handler = toNodeHandler(auth);
 
-// Handle all HTTP methods for root path
-router.get("/", handler);
-router.post("/", handler);
-router.put("/", handler);
-router.delete("/", handler);
-router.patch("/", handler);
+// IMPORTANT: Custom routes must come BEFORE the catch-all handler
+// The handler below catches ALL routes, so specific routes must be defined first
 
-// Handle single-level paths (e.g., /session, /sign-out)
-router.get("/:path", handler);
-router.post("/:path", handler);
-router.put("/:path", handler);
-router.delete("/:path", handler);
-router.patch("/:path", handler);
+// Handle specific Better Auth routes first (before catch-all)
+router.get("/session", handler);
+router.post("/sign-out", handler);
+router.post("/sign-in/email", handler);
+router.post("/sign-up/email", handler);
+router.get("/sign-in/social", handler);
+router.post("/sign-in/social", handler);
 
 // Handle two-level paths (e.g., /sign-in/social, /sign-in/email)
 router.get("/:path/:subpath", handler);
@@ -300,5 +307,12 @@ router.post("/:path/:subpath/:action", handler);
 router.put("/:path/:subpath/:action", handler);
 router.delete("/:path/:subpath/:action", handler);
 router.patch("/:path/:subpath/:action", handler);
+
+// Catch-all for root path (must be last)
+router.get("/", handler);
+router.post("/", handler);
+router.put("/", handler);
+router.delete("/", handler);
+router.patch("/", handler);
 
 export default router;
