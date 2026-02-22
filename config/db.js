@@ -6,7 +6,7 @@ const connectDB = async () => {
     await mongoose.connect(process.env.MONGO_DB, { dbName: "PropertyBulbul" });
     console.log("✅ Mongodb Connected Successfully");
   } catch (error) {
-    console.error("❌ MONGODB Failed to Connect:", error.message);
+    console.error("❌ Mongodb Failed to Connect:", error.message);
     process.exit(1);
   }
 };

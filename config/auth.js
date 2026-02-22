@@ -89,6 +89,8 @@ export const auth = betterAuth({
       sameSite: process.env.NODE_ENV === "production" ? "none" : "lax",
       secure: process.env.NODE_ENV === "production",
     },
+    // Return session token in response body for cross-origin clients
+    storeSessionInDatabase: true,
   },
   account: {
     accountLinking: {
@@ -153,6 +155,8 @@ export const auth = betterAuth({
   ].filter(Boolean),
   advanced: {
     generateId: false,
+    // Return session token in response for cross-origin clients
+    returnSessionToken: true,
   },
 });
 
