@@ -24,7 +24,7 @@ export const getUser = async (req, res) => {
     
     let user;
     
-    // First, try to find in the main users collection if it's a valid ObjectId
+    // Find in the main users collection if it's a valid ObjectId
     if (isValidObjectId(userId)) {
       user = await User.findById(userId)
         .select("-password")
@@ -32,54 +32,6 @@ export const getUser = async (req, res) => {
           path: "bookedVisits",
           populate: { path: "property" },
         });
-    }
-    
-    // If not found in users collection, try Better Auth collection
-    if (!user) {
-      const db = mongoose.connection.db;
-      const betterAuthUserCollection = db.collection("users");
-      
-      // Try to find by the provided ID (could be Better Auth ID or ObjectId)
-      let betterAuthUser = await betterAuthUserCollection.findOne({ id: userId });
-      
-      // Also try by _id if it's a valid ObjectId
-      if (!betterAuthUser && isValidObjectId(userId)) {
-        betterAuthUser = await betterAuthUserCollection.findOne({ 
-          _id: new mongoose.Types.ObjectId(userId) 
-        });
-      }
-      
-      if (betterAuthUser) {
-        // First, try to find the corresponding MongoDB user by email
-        const mongoUser = await User.findOne({ email: betterAuthUser.email })
-          .select("-password")
-          .populate({
-            path: "bookedVisits",
-            populate: { path: "property" },
-          });
-        
-        if (mongoUser) {
-          user = mongoUser;
-        } else {
-          // If no MongoDB user exists, return the Better Auth user data
-          // Transform Better Auth user to match expected frontend format
-          user = {
-            _id: betterAuthUser.id,
-            id: betterAuthUser.id,
-            name: betterAuthUser.name,
-            email: betterAuthUser.email,
-            image: betterAuthUser.image || "",
-            phone: betterAuthUser.phone || "",
-            role: betterAuthUser.role || "user",
-            isActive: betterAuthUser.isActive !== false,
-            favProperties: betterAuthUser.favProperties || [],
-            bookedVisits: betterAuthUser.bookedVisits || [],
-            ownedProperties: betterAuthUser.ownedProperties || [],
-            createdAt: betterAuthUser.createdAt,
-            updatedAt: betterAuthUser.updatedAt,
-          };
-        }
-      }
     }
 
     if (!user) {
@@ -165,84 +117,29 @@ export const updateProfile = async (req, res) => {
   const { name, email, phone } = req.body;
 
   try {
-    let user;
-    let betterAuthUser = null;
-    
-    // First try to find user in the main users collection
-    if (req.user._id && isValidObjectId(req.user._id)) {
-      user = await User.findById(req.user._id);
-    }
-    
-    // If not found, check if this is a Better Auth user
+    const user = await User.findById(req.user._id);
+
     if (!user) {
-      const db = mongoose.connection.db;
-      const betterAuthUserCollection = db.collection("users");
-      
-      // Try to find by the user's ID or email
-      betterAuthUser = await betterAuthUserCollection.findOne({ 
-        $or: [
-          { id: req.user._id || req.user.id },
-          { email: req.user.email }
-        ]
-      });
-      
-      if (betterAuthUser) {
-        // Check if there's a corresponding MongoDB user
-        user = await User.findOne({ email: betterAuthUser.email });
-      }
+      return res.status(404).json({ message: "User not found" });
     }
 
-    const imageUrl = req.file ? req.file.path : (user?.image || betterAuthUser?.image || "");
+    const imageUrl = req.file ? req.file.path : user.image || "";
 
-    // Update user in the main users collection if exists
-    if (user) {
-      user.name = name || user.name;
-      user.email = email || user.email;
-      user.phone = phone || user.phone;
-      user.image = imageUrl;
+    user.name = name || user.name;
+    user.email = email || user.email;
+    user.phone = phone || user.phone;
+    user.image = imageUrl;
 
-      const updatedUser = await user.save();
+    const updatedUser = await user.save();
 
-      return res.status(200).json({
-        _id: updatedUser._id,
-        name: updatedUser.name,
-        email: updatedUser.email,
-        phone: updatedUser.phone,
-        role: updatedUser.role,
-        image: updatedUser.image,
-      });
-    }
-    
-    // If no MongoDB user but Better Auth user exists, update in Better Auth collection
-    if (betterAuthUser) {
-      const db = mongoose.connection.db;
-      const betterAuthUserCollection = db.collection("users");
-      
-      await betterAuthUserCollection.updateOne(
-        { id: betterAuthUser.id },
-        {
-          $set: {
-            name: name || betterAuthUser.name,
-            email: email || betterAuthUser.email,
-            phone: phone || betterAuthUser.phone || "",
-            image: imageUrl,
-            updatedAt: new Date(),
-          },
-        }
-      );
-
-      return res.status(200).json({
-        _id: betterAuthUser.id,
-        id: betterAuthUser.id,
-        name: name || betterAuthUser.name,
-        email: email || betterAuthUser.email,
-        phone: phone || betterAuthUser.phone || "",
-        role: betterAuthUser.role || "user",
-        image: imageUrl,
-      });
-    }
-
-    return res.status(404).json({ message: "User not found" });
+    return res.status(200).json({
+      _id: updatedUser._id,
+      name: updatedUser.name,
+      email: updatedUser.email,
+      phone: updatedUser.phone,
+      role: updatedUser.role,
+      image: updatedUser.image,
+    });
   } catch (error) {
     console.error("Profile update error:", error);
     res.status(500).json({ message: "Server Error", error: error.message });

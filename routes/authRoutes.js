@@ -3,39 +3,31 @@ import { protect } from "../middlewares/authMiddleware.js";
 import {
   changePassword,
   updateProfile,
-  getCurrentUser,
-  syncUser,
+  forgotPassword,
+  resetPassword,
 } from "../controllers/authController.js";
 
 /**
- * Authentication Routes
- * 
- * Better Auth handles the core authentication flows:
- * - Sign up: POST /api/better-auth/sign-up/email
- * - Sign in: POST /api/better-auth/sign-in/email
- * - Sign out: POST /api/better-auth/sign-out
- * - Social login: GET /api/better-auth/sign-in/social
- * - Password reset: POST /api/better-auth/forgot-password
- * - Session: GET /api/better-auth/session
- * 
- * These routes provide additional functionality:
- * - Password change for authenticated users
- * - Profile management
- * - User sync from Better Auth to User collection
+ * Authentication Routes (Legacy)
+ *
+ * Core auth routes (register, login, logout, refresh, google, me, logout-all)
+ * are now handled by /auth/auth.routes.js
+ *
+ * This file handles additional routes:
+ * - POST /api/auth/forgot-password - Request password reset
+ * - POST /api/auth/reset-password - Reset password with token
+ * - PUT /api/auth/profile - Update user profile
+ * - POST /api/auth/change-password - Change password (authenticated)
  */
 
 const router = express.Router();
 
-// Sync user from Better Auth to User collection (call after sign up)
-router.post("/sync", protect, syncUser);
+// Password reset routes (public)
+router.post("/forgot-password", forgotPassword);
+router.post("/reset-password", resetPassword);
 
-// Get current user profile
-router.get("/me", protect, getCurrentUser);
-
-// Update user profile
+// Protected routes
 router.put("/profile", protect, updateProfile);
-
-// Change password (for authenticated users)
 router.post("/change-password", protect, changePassword);
 
 export default router;
