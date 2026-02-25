@@ -2,7 +2,7 @@ import Enquiry from "../models/enquiry.js";
 
 export const createEnquiry = async (req, res) => {
   try {
-    // unncomment it if you want that same use cannot post-requirement twice.
+    // unncomment it if you want that same user cannot post-requirement twice.
 
     //console.log(req.body);
 

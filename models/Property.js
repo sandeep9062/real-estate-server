@@ -374,7 +374,7 @@ const propertySchema = new mongoose.Schema(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 propertySchema.virtual("id").get(function () {
