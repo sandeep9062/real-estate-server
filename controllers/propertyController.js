@@ -82,7 +82,7 @@ const createProperty = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
       req.user._id,
       { $addToSet: { ownedProperties: createdProperty._id } },
-      { new: true }
+      { new: true },
     );
   } catch (e) {
     console.error("Failed to update ownedProperties for user", e);
@@ -151,8 +151,10 @@ const getProperties = asyncHandler(async (req, res) => {
     if (areaMax) query["area.value"].$lte = Number(areaMax);
   }
 
-  const properties = await Property.find(query).populate("user", "name email");
-
+  const properties = await Property.find(query)
+    .populate("user", "name email")
+    .sort({ createdAt: -1 });
+  // sort to get latest listed properties at top
   const transformedProperties = properties.map((property) => {
     const propertyObj = property.toObject();
     if (
@@ -300,13 +302,13 @@ const deleteProperty = asyncHandler(async (req, res) => {
     await User.updateMany(
       { favProperties: property._id },
       { $pull: { favProperties: property._id } },
-      { session }
+      { session },
     );
 
     // 2️⃣ Find & delete all bookings related to this property
     const bookings = await Booking.find(
       { property: property._id },
-      { _id: 1 }
+      { _id: 1 },
     ).session(session);
 
     const bookingIds = bookings.map((b) => b._id);
@@ -318,7 +320,7 @@ const deleteProperty = asyncHandler(async (req, res) => {
       await User.updateMany(
         { bookedVisits: { $in: bookingIds } },
         { $pull: { bookedVisits: { $in: bookingIds } } },
-        { session }
+        { session },
       );
     }
 
@@ -326,7 +328,7 @@ const deleteProperty = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
       property.user,
       { $pull: { ownedProperties: property._id } },
-      { session }
+      { session },
     );
 
     // 5️⃣ Permanently delete the property
