@@ -171,6 +171,13 @@ app.listen(PORT, () => {
       console.log(
         `🔄 [${pingTime.toISOString()}] Ping cron: ${data.message} (${responseTime}ms)`,
       );
+
+      // NEW: Every 30th ping (roughly once an hour), delete logs older than 24 hours
+      if (new Date().getMinutes() % 30 === 0) {
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        await PingLog.deleteMany({ pingTime: { $lt: oneDayAgo } });
+        console.log("🧹 Cleaned up old ping logs to save space.");
+      }
     } catch (error) {
       const responseTime = Date.now() - startTime;
 
