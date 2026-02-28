@@ -140,6 +140,7 @@ const propertySchema = new mongoose.Schema(
     },
 
     contactNumber: [{ type: String }],
+
     preferredContact: {
       type: String,
       enum: ["Call", "WhatsApp", "Email"],
@@ -164,7 +165,8 @@ const propertySchema = new mongoose.Schema(
       type: String,
       index: true,
     },
-
+    // it will be used to boost the listing in search results and can be a paid feature
+    // currently we are updating it using cron -job every hour ,select 10 properties randomly and mark them as featured for next 24 hours
     isFeatured: {
       type: Boolean,
       default: false,
@@ -188,7 +190,9 @@ const propertySchema = new mongoose.Schema(
 
     // admin controls
     isVerified: { type: Boolean, default: false, index: true },
+
     isActive: { type: Boolean, default: true },
+
     deletedAt: { type: Date, default: null },
 
     adminNotes: {
@@ -249,7 +253,7 @@ const propertySchema = new mongoose.Schema(
     ====================== */
     status: {
       type: String,
-      enum: ["Active", "Sold", "Rented", "Inactive"],
+      enum: ["Active", "Sold", "Rented", "Inactive", "Review Required"],
       default: "Active",
       index: true,
     },

@@ -6,6 +6,7 @@ import connectDB from "./config/db.js";
 import cookieParser from "cookie-parser";
 import cron from "node-cron";
 import PingLog from "./models/PingLog.js";
+import Property from "./models/Property.js";
 import authRoutes from "./auth/auth.routes.js";
 import authLegacyRoutes from "./routes/authRoutes.js";
 import siteSettingsRoutes from "./routes/siteSettingsRoutes.js";
@@ -177,6 +178,39 @@ app.listen(PORT, () => {
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         await PingLog.deleteMany({ pingTime: { $lt: oneDayAgo } });
         console.log("🧹 Cleaned up old ping logs to save space.");
+      }
+
+      // NEW: Featured Property Rotator (Runs at the start of every hour)
+      if (pingTime.getMinutes() === 0) {
+        try {
+          console.log("🎲 Rotating Featured Properties...");
+
+          // 1. Reset all currently featured properties to false
+          await Property.updateMany(
+            { isFeatured: true },
+            { isFeatured: false },
+          );
+
+          // 2. Pick 10 random properties to feature
+          // Note: .aggregate is better for random sampling than .find
+          const randomProperties = await Property.aggregate([
+            { $match: { status: "Active" } }, // Only feature active listings
+            { $sample: { size: 10 } },
+          ]);
+
+          // 3. Mark the selected ones as featured
+          const ids = randomProperties.map((p) => p._id);
+          await Property.updateMany(
+            { _id: { $in: ids } },
+            { isFeatured: true },
+          );
+
+          console.log(
+            `Successfully featured: ${randomProperties.map((p) => p.title).join(", ")}`,
+          );
+        } catch (err) {
+          console.error("❌ Rotation failed:", err.message);
+        }
       }
     } catch (error) {
       const responseTime = Date.now() - startTime;
