@@ -22,7 +22,8 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import workflowRouter from "./routes/workflow.routes.js";
-
+import seedRoute from "./routes/seedProperties.js";
+import migrationRoutes from "./routes/migration.js";
 connectDB();
 
 const app = express();
@@ -87,11 +88,15 @@ app.use("/api/v1/contacts", contactRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/notifications", notificationRoutes);
-
 app.use("/api/chatbot", chatbotRouter);
 app.use("/api/ai", aiRoutes);
 app.use("/api/v1/subscription", subscriptionRouter);
 app.use("/api/v1/workflows", workflowRouter);
+
+// extra routes for seeding and migration (not under /api to avoid accidental calls in production)
+
+//app.use("/api", seedRoute);
+//app.use("/api", migrationRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

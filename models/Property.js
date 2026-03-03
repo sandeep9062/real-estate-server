@@ -44,7 +44,7 @@ const propertySchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["Residential", "Commercial"],
+      enum: ["Residential", "Commercial", "Industrial", "Agricultural"],
       required: true,
       index: true,
     },
@@ -55,6 +55,8 @@ const propertySchema = new mongoose.Schema(
         "Apartment/Flat",
         "House/Villa",
         "Land/Plot",
+        "PG/Hostel",
+        "Farmhouse",
         "Retail",
         "Office",
         "Industrial",
@@ -84,7 +86,7 @@ const propertySchema = new mongoose.Schema(
 
     furnishing: {
       type: String,
-      enum: ["Furnished", "Semi Furnished", "Un-Furnished"],
+      enum: ["Furnished", "Fully Furnished", "Semi Furnished", "Un-Furnished"],
       default: "Un-Furnished",
     },
     facing: {
