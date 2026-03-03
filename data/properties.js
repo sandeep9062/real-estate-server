@@ -5271,6 +5271,1007 @@ const properties = [
     views: 41,
     leads: 5,
   },
+  {
+    title: "Spacious 4BHK Independent House in Sector 21, Panchkula",
+    description:
+      "Premium independent 4BHK house in prime Sector 21 Panchkula. Large front lawn, modular kitchen and servant room. Ideal for families looking for independent living.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Independent House",
+
+    area: { value: 2400, unit: "sqft" },
+
+    ageOfProperty: 6,
+    availability: "Ready to Move",
+    furnishing: "Semi Furnished",
+    facing: "East",
+
+    price: 24500000,
+    pricePerSqft: 10208,
+
+    image: [
+      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Agent",
+    contactNumber: ["9815007788"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 21",
+      city: "Panchkula",
+      sector: "Sector 21",
+      state: "Haryana",
+      country: "India",
+      slug: "4bhk-independent-sector-21-panchkula",
+      pincode: "134112",
+      coordinates: { type: "Point", coordinates: [76.8609, 30.6948] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "HUDA",
+    reraNumber: "HRERA-PKL-SALE-2023-211",
+
+    facilities: {
+      bedrooms: 4,
+      bathrooms: 4,
+      parkings: 2,
+      securityFeatures: ["Gated"],
+      waterSupply: "Both",
+      powerBackup: true,
+      totalFloors: 2,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["Ojas Hospital Panchkula"],
+      malls: ["Elante Mall Chandigarh"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: true,
+    views: 87,
+    leads: 11,
+  },
+  {
+    title: "Modern 3BHK Builder Floor in Sector 50, Chandigarh",
+    description:
+      "Newly constructed 3BHK builder floor with lift and covered parking. Located in peaceful Sector 50 Chandigarh with excellent connectivity.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Builder Floor",
+
+    area: { value: 1800, unit: "sqft" },
+
+    ageOfProperty: 1,
+    availability: "Ready to Move",
+    furnishing: "Semi Furnished",
+    facing: "North-East",
+
+    price: 21500000,
+    pricePerSqft: 11944,
+
+    image: [
+      "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: false,
+    postedBy: "Agent",
+    contactNumber: ["9876008899"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 50",
+      city: "Chandigarh",
+      sector: "Sector 50",
+      state: "Chandigarh",
+      country: "India",
+      slug: "3bhk-builder-floor-sector-50-chandigarh",
+      pincode: "160047",
+      coordinates: { type: "Point", coordinates: [76.7511, 30.7013] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "MC",
+    reraNumber: "CHD-SALE-2024-302",
+
+    facilities: {
+      bedrooms: 3,
+      bathrooms: 3,
+      parkings: 1,
+      securityFeatures: ["CCTV", "Gated"],
+      waterSupply: "Municipal",
+      powerBackup: true,
+      totalFloors: 3,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["Max Hospital Chandigarh"],
+      malls: ["Sector 17 Plaza"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: true,
+    views: 65,
+    leads: 8,
+  },
+  {
+    title: "2BHK Affordable Apartment in Sector 115, Mohali",
+    description:
+      "Budget-friendly 2BHK apartment near Kharar-Landran Road. Suitable for small families and first-time buyers.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Apartment/Flat",
+
+    area: { value: 950, unit: "sqft" },
+
+    ageOfProperty: 5,
+    availability: "Ready to Move",
+    furnishing: "Semi Furnished",
+    facing: "West",
+
+    price: 4200000,
+    pricePerSqft: 4421,
+
+    image: [
+      "https://images.unsplash.com/photo-1494526585095-c41746248156?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Owner",
+    contactNumber: ["9780012345"],
+    preferredContact: "WhatsApp",
+
+    location: {
+      address: "Sector 115",
+      city: "Mohali",
+      sector: "Sector 115",
+      state: "Punjab",
+      country: "India",
+      slug: "2bhk-sector-115-mohali",
+      pincode: "140307",
+      coordinates: { type: "Point", coordinates: [76.6934, 30.6752] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "GMADA",
+    reraNumber: "PBRERA-MHL-SALE-2022-174",
+
+    facilities: {
+      bedrooms: 2,
+      bathrooms: 2,
+      parkings: 1,
+      securityFeatures: ["Gated"],
+      waterSupply: "Both",
+      powerBackup: false,
+      totalFloors: 6,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["Fortis Hospital Mohali"],
+      malls: ["VR Punjab Mall"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: false,
+    views: 53,
+    leads: 6,
+  },
+  {
+    title: "Luxury 4BHK Penthouse in IT City, Sector 66B Mohali",
+    description:
+      "Ultra-luxury penthouse with private terrace and panoramic city views. Located in prime IT City Mohali, ideal for business owners and senior IT professionals.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Penthouse",
+
+    area: { value: 3200, unit: "sqft" },
+
+    ageOfProperty: 1,
+    availability: "Ready to Move",
+    furnishing: "Fully Furnished",
+    facing: "North-East",
+
+    price: 36500000,
+    pricePerSqft: 11406,
+
+    image: [
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1507089947368-19c1da9775ae?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: false,
+    postedBy: "Agent",
+    contactNumber: ["9814112233"],
+    preferredContact: "Call",
+
+    location: {
+      address: "IT City Road",
+      city: "Mohali",
+      sector: "Sector 66B",
+      state: "Punjab",
+      country: "India",
+      slug: "4bhk-penthouse-sector-66b-mohali",
+      pincode: "160066",
+      coordinates: { type: "Point", coordinates: [76.7268, 30.6895] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "GMADA",
+    reraNumber: "PBRERA-MHL-SALE-2024-501",
+
+    facilities: {
+      bedrooms: 4,
+      bathrooms: 4,
+      parkings: 3,
+      securityFeatures: ["CCTV", "Gated", "Guard"],
+      waterSupply: "Both",
+      powerBackup: true,
+      totalFloors: 18,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["Fortis Hospital Mohali"],
+      malls: ["VR Punjab Mall"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: true,
+    views: 121,
+    leads: 16,
+  },
+  {
+    title: "Commercial Office Space in IT Park, Chandigarh",
+    description:
+      "Fully furnished office space ideal for startups and IT companies. Located in Chandigarh IT Park with excellent connectivity and corporate environment.",
+    deal: "Rent",
+    type: "Commercial",
+    propertyCategory: "Office Space",
+
+    area: { value: 1400, unit: "sqft" },
+
+    ageOfProperty: 5,
+    availability: "Ready to Move",
+    furnishing: "Fully Furnished",
+    facing: "East",
+
+    price: 95000,
+    securityDeposit: 190000,
+    pricePerSqft: 68,
+
+    image: [
+      "https://images.unsplash.com/photo-1497366216548-37526070297c?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1524758631624-e2822e304c36?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Agent",
+    contactNumber: ["9876540011"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Rajiv Gandhi IT Park",
+      city: "Chandigarh",
+      sector: "IT Park",
+      state: "Chandigarh",
+      country: "India",
+      slug: "office-space-it-park-chandigarh",
+      pincode: "160101",
+      coordinates: { type: "Point", coordinates: [76.8046, 30.7294] },
+    },
+
+    ownershipType: "Leasehold",
+    approvedBy: "CHB",
+    reraNumber: "CHD-COM-RENT-2023-229",
+
+    facilities: {
+      bedrooms: 0,
+      bathrooms: 2,
+      parkings: 2,
+      securityFeatures: ["CCTV", "Gated", "Guard"],
+      waterSupply: "Municipal",
+      powerBackup: true,
+      totalFloors: 7,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["PGIMER Chandigarh"],
+      malls: ["Elante Mall Chandigarh"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: true,
+    views: 98,
+    leads: 13,
+  },
+  {
+    title: "Residential Plot 200 Sq Yards in Sector 12, Panchkula",
+    description:
+      "Prime residential plot in well-developed Sector 12 Panchkula. Suitable for independent house construction. Clear title and immediate registry available.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Plot/Land",
+
+    area: { value: 1800, unit: "sqft" },
+
+    ageOfProperty: 0,
+    availability: "Ready to Move",
+    furnishing: "Unfurnished",
+    facing: "South-East",
+
+    price: 15500000,
+    pricePerSqft: 8611,
+
+    image: [
+      "https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Owner",
+    contactNumber: ["9815223344"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 12",
+      city: "Panchkula",
+      sector: "Sector 12",
+      state: "Haryana",
+      country: "India",
+      slug: "plot-sector-12-panchkula",
+      pincode: "134112",
+      coordinates: { type: "Point", coordinates: [76.8572, 30.7021] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "HUDA",
+    reraNumber: "HRERA-PKL-SALE-2022-411",
+
+    facilities: {
+      bedrooms: 0,
+      bathrooms: 0,
+      parkings: 0,
+      securityFeatures: [],
+      waterSupply: "Municipal",
+      powerBackup: false,
+      totalFloors: 0,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["Ojas Hospital Panchkula"],
+      malls: ["Elante Mall Chandigarh"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: true,
+    views: 74,
+    leads: 10,
+  },
+
+  {
+    title: "3BHK Luxury Apartment in Aerocity, Mohali",
+    description:
+      "Premium 3BHK apartment in upscale Aerocity Mohali. Gated society with clubhouse, swimming pool and landscaped greens. Ideal for corporate families and NRIs.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Apartment/Flat",
+
+    area: { value: 1850, unit: "sqft" },
+
+    ageOfProperty: 2,
+    availability: "Ready to Move",
+    furnishing: "Semi Furnished",
+    facing: "East",
+
+    price: 19500000,
+    pricePerSqft: 10540,
+
+    image: [
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Agent",
+    contactNumber: ["9876002211"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Aerocity Block C",
+      city: "Mohali",
+      sector: "Aerocity",
+      state: "Punjab",
+      country: "India",
+      slug: "3bhk-aerocity-mohali-sale",
+      pincode: "140306",
+      coordinates: { type: "Point", coordinates: [76.7179, 30.6735] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "GMADA",
+    reraNumber: "PBRERA-MHL-SALE-2024-612",
+
+    facilities: {
+      bedrooms: 3,
+      bathrooms: 3,
+      parkings: 2,
+      securityFeatures: ["CCTV", "Gated", "Guard"],
+      waterSupply: "Both",
+      powerBackup: true,
+      totalFloors: 15,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["Fortis Hospital Mohali"],
+      malls: ["VR Punjab Mall"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: true,
+    views: 109,
+    leads: 17,
+  },
+  {
+    title: "Independent 5BHK House in Sector 10, Chandigarh",
+    description:
+      "Spacious 5BHK independent house in prime Sector 10 Chandigarh. Large plot size, green surroundings and premium neighborhood.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Independent House",
+
+    area: { value: 3500, unit: "sqft" },
+
+    ageOfProperty: 12,
+    availability: "Ready to Move",
+    furnishing: "Unfurnished",
+    facing: "North",
+
+    price: 58500000,
+    pricePerSqft: 16714,
+
+    image: [
+      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: false,
+    postedBy: "Agent",
+    contactNumber: ["9814009988"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 10",
+      city: "Chandigarh",
+      sector: "Sector 10",
+      state: "Chandigarh",
+      country: "India",
+      slug: "5bhk-sector-10-chandigarh-sale",
+      pincode: "160011",
+      coordinates: { type: "Point", coordinates: [76.7845, 30.7476] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "MC",
+    reraNumber: "CHD-SALE-2023-451",
+
+    facilities: {
+      bedrooms: 5,
+      bathrooms: 5,
+      parkings: 3,
+      securityFeatures: ["Gated"],
+      waterSupply: "Municipal",
+      powerBackup: true,
+      totalFloors: 2,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["PGIMER Chandigarh"],
+      malls: ["Sector 17 Plaza"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: true,
+    views: 156,
+    leads: 23,
+  },
+  {
+    title: "Residential Plot 250 Sq Yards in Sector 8, Panchkula",
+    description:
+      "Prime residential plot in Sector 8 Panchkula. Ideal for constructing independent villa. Wide road frontage and excellent connectivity.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Plot/Land",
+
+    area: { value: 2250, unit: "sqft" },
+
+    ageOfProperty: 0,
+    availability: "Ready to Move",
+    furnishing: "Unfurnished",
+    facing: "South",
+
+    price: 21000000,
+    pricePerSqft: 9333,
+
+    image: [
+      "https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Owner",
+    contactNumber: ["9815221100"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 8",
+      city: "Panchkula",
+      sector: "Sector 8",
+      state: "Haryana",
+      country: "India",
+      slug: "plot-sector-8-panchkula-sale",
+      pincode: "134109",
+      coordinates: { type: "Point", coordinates: [76.8579, 30.7073] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "HUDA",
+    reraNumber: "HRERA-PKL-SALE-2024-233",
+
+    facilities: {
+      bedrooms: 0,
+      bathrooms: 0,
+      parkings: 0,
+      securityFeatures: [],
+      waterSupply: "Municipal",
+      powerBackup: false,
+      totalFloors: 0,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["Ojas Hospital Panchkula"],
+      malls: ["Elante Mall Chandigarh"],
+    },
+
+    user: "699c10496d91a183d85aefba",
+    status: "Active",
+    isVerified: true,
+    views: 82,
+    leads: 9,
+  },
+  {
+    title: "Prime Retail Showroom in Sector 17 Plaza, Chandigarh",
+    description:
+      "Iconic retail showroom in high-footfall Sector 17 Plaza. Suitable for luxury brands, jewellery or flagship stores.",
+    deal: "Sale",
+    type: "Commercial",
+    propertyCategory: "Showroom",
+
+    area: { value: 2800, unit: "sqft" },
+
+    ageOfProperty: 15,
+    availability: "Ready to Move",
+    furnishing: "Semi Furnished",
+    facing: "South",
+
+    price: 96000000,
+    pricePerSqft: 34285,
+
+    image: [
+      "https://images.unsplash.com/photo-1604719312566-8912e9227c6a?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1582037928769-181f2644ecb7?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: false,
+    postedBy: "Agent",
+    contactNumber: ["9814000004"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 17 Plaza",
+      city: "Chandigarh",
+      sector: "Sector 17",
+      state: "Chandigarh",
+      country: "India",
+      slug: "luxury-showroom-sector-17-chandigarh",
+      pincode: "160017",
+      coordinates: { type: "Point", coordinates: [76.7794, 30.7398] },
+    },
+
+    ownershipType: "Leasehold",
+    approvedBy: "MC",
+    reraNumber: "CHD-COM-LUX-2024-411",
+
+    facilities: {
+      bedrooms: 0,
+      bathrooms: 2,
+      parkings: 4,
+      securityFeatures: ["CCTV", "Guard"],
+      waterSupply: "Municipal",
+      powerBackup: true,
+      totalFloors: 1,
+    },
+
+    status: "Active",
+    isVerified: true,
+    views: 248,
+    leads: 37,
+  },
+  {
+    title: "Premium Commercial Showroom on VIP Road, Zirakpur",
+    description:
+      "High-visibility double-height showroom on main VIP Road. Ideal for branded retail, automobile or lifestyle stores.",
+    deal: "Sale",
+    type: "Commercial",
+    propertyCategory: "Showroom",
+
+    area: { value: 3200, unit: "sqft" },
+
+    ageOfProperty: 2,
+    availability: "Ready to Move",
+    furnishing: "Unfurnished",
+    facing: "East",
+
+    price: 68000000,
+    pricePerSqft: 21250,
+
+    image: [
+      "https://images.unsplash.com/photo-1560185127-6ed189bf02f4?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1604014238170-4def1e4e6b1d?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Agent",
+    contactNumber: ["9814000003"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Main VIP Road",
+      city: "Zirakpur",
+      sector: "VIP Road",
+      state: "Punjab",
+      country: "India",
+      slug: "commercial-showroom-vip-road-zirakpur",
+      pincode: "140603",
+      coordinates: { type: "Point", coordinates: [76.8156, 30.6425] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "MC",
+    reraNumber: "PBRERA-ZRK-COM-2024-601",
+
+    facilities: {
+      bedrooms: 0,
+      bathrooms: 2,
+      parkings: 6,
+      securityFeatures: ["CCTV"],
+      waterSupply: "Municipal",
+      powerBackup: true,
+      totalFloors: 1,
+    },
+
+    status: "Active",
+    isVerified: true,
+    views: 162,
+    leads: 19,
+  },
+  {
+    title: "Premium 5BHK Independent House in Sector 9, Chandigarh",
+    description:
+      "Elite 5BHK bungalow in one of Chandigarh’s most prestigious sectors. Spacious layout with basement, terrace lounge and servant quarters.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Independent House",
+
+    area: { value: 4800, unit: "sqft" },
+
+    ageOfProperty: 8,
+    availability: "Ready to Move",
+    furnishing: "Semi Furnished",
+    facing: "North",
+
+    price: 87500000,
+    pricePerSqft: 18229,
+
+    image: [
+      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Agent",
+    contactNumber: ["9814000002"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 9",
+      city: "Chandigarh",
+      sector: "Sector 9",
+      state: "Chandigarh",
+      country: "India",
+      slug: "luxury-house-sector-9-chandigarh",
+      pincode: "160009",
+      coordinates: { type: "Point", coordinates: [76.7855, 30.7412] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "MC",
+    reraNumber: "CHD-LUX-2023-778",
+
+    facilities: {
+      bedrooms: 5,
+      bathrooms: 6,
+      parkings: 3,
+      securityFeatures: ["CCTV", "Guard"],
+      waterSupply: "Municipal",
+      powerBackup: true,
+      totalFloors: 3,
+    },
+
+    status: "Active",
+    isVerified: true,
+    views: 185,
+    leads: 24,
+  },
+  {
+    title: "Ultra-Luxury 6BHK Villa in Sector 5, Panchkula",
+    description:
+      "Architect-designed 6BHK luxury villa with private lift, landscaped lawn and Italian marble flooring. Located in elite Sector 5 Panchkula.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Villa",
+
+    area: { value: 5200, unit: "sqft" },
+
+    ageOfProperty: 3,
+    availability: "Ready to Move",
+    furnishing: "Fully Furnished",
+    facing: "North-East",
+
+    price: 92000000,
+    pricePerSqft: 17692,
+
+    image: [
+      "https://images.unsplash.com/photo-1600607687644-c7171b42498e?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1613977257363-707ba9348227?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: false,
+    postedBy: "Agent",
+    contactNumber: ["9814000001"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 5",
+      city: "Panchkula",
+      sector: "Sector 5",
+      state: "Haryana",
+      country: "India",
+      slug: "ultra-luxury-villa-sector-5-panchkula",
+      pincode: "134109",
+      coordinates: { type: "Point", coordinates: [76.8569, 30.7054] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "HUDA",
+    reraNumber: "HRERA-PKL-LUX-2024-901",
+
+    facilities: {
+      bedrooms: 6,
+      bathrooms: 6,
+      parkings: 4,
+      securityFeatures: ["CCTV", "Gated", "Guard"],
+      waterSupply: "Both",
+      powerBackup: true,
+      totalFloors: 3,
+    },
+
+    nearbyPlaces: {
+      hospitals: ["Ojas Hospital Panchkula"],
+      malls: ["Elante Mall Chandigarh"],
+    },
+
+    status: "Active",
+    isVerified: true,
+    views: 210,
+    leads: 29,
+  },
+  {
+    title: "Ultra-Luxury 5BHK Sky Villa in Aerocity, Mohali",
+    description:
+      "Exclusive sky villa with private terrace garden, jacuzzi deck and panoramic airport-facing views. Located in premium Aerocity high-rise development.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Sky Villa",
+
+    area: { value: 5400, unit: "sqft" },
+
+    ageOfProperty: 1,
+    availability: "Ready to Move",
+    furnishing: "Fully Furnished",
+    facing: "South-East",
+
+    price: 129000000,
+    pricePerSqft: 23888,
+
+    image: [
+      "https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600607687644-c7171b42498e?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1613977257363-707ba9348227?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: false,
+    postedBy: "Agent",
+    contactNumber: ["9814003333"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Aerocity",
+      city: "Mohali",
+      sector: "Aerocity",
+      state: "Punjab",
+      country: "India",
+      slug: "5bhk-sky-villa-aerocity-mohali",
+      pincode: "140306",
+      coordinates: { type: "Point", coordinates: [76.7179, 30.6735] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "GMADA",
+    reraNumber: "PBRERA-MHL-ULTRA-2024-702",
+
+    facilities: {
+      bedrooms: 5,
+      bathrooms: 6,
+      parkings: 4,
+      securityFeatures: ["CCTV", "Gated", "Guard"],
+      waterSupply: "Both",
+      powerBackup: true,
+      totalFloors: 20,
+    },
+
+    status: "Active",
+    isVerified: true,
+    views: 291,
+    leads: 38,
+  },
+  {
+    title: "Presidential 6BHK Villa in Sector 2, Panchkula",
+    description:
+      "Ultra-premium 6BHK villa with double-height entrance lobby, private swimming pool, landscaped backyard and basement entertainment zone. Located in elite Sector 2 Panchkula.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Villa",
+
+    area: { value: 6500, unit: "sqft" },
+
+    ageOfProperty: 2,
+    availability: "Ready to Move",
+    furnishing: "Fully Furnished",
+    facing: "East",
+
+    price: 147500000,
+    pricePerSqft: 22692,
+
+    image: [
+      "https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1613545325268-9265e1609167?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: true,
+    postedBy: "Agent",
+    contactNumber: ["9814002222"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 2",
+      city: "Panchkula",
+      sector: "Sector 2",
+      state: "Haryana",
+      country: "India",
+      slug: "6bhk-presidential-villa-sector-2-panchkula",
+      pincode: "134112",
+      coordinates: { type: "Point", coordinates: [76.8598, 30.7006] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "HUDA",
+    reraNumber: "HRERA-PKL-ULTRA-2024-888",
+
+    facilities: {
+      bedrooms: 6,
+      bathrooms: 7,
+      parkings: 5,
+      securityFeatures: ["CCTV", "Guard"],
+      waterSupply: "Both",
+      powerBackup: true,
+      totalFloors: 3,
+    },
+
+    status: "Active",
+    isVerified: true,
+    views: 268,
+    leads: 33,
+  },
+  {
+    title: "Architectural 7BHK Ultra-Luxury Mansion in Sector 8, Chandigarh",
+    description:
+      "One-of-a-kind 7BHK architectural mansion in prime Sector 8 Chandigarh. Features private elevator, temperature-controlled wine cellar, home theatre, rooftop infinity lounge and landscaped garden.",
+    deal: "Sale",
+    type: "Residential",
+    propertyCategory: "Mansion",
+
+    area: { value: 8200, unit: "sqft" },
+
+    ageOfProperty: 4,
+    availability: "Ready to Move",
+    furnishing: "Fully Furnished",
+    facing: "North-East",
+
+    price: 185000000,
+    pricePerSqft: 22560,
+
+    image: [
+      "https://images.unsplash.com/photo-1613490493576-7fde63acd811?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1600607687644-c7171b42498e?q=80&w=1200&auto=format&fit=crop",
+      "https://images.unsplash.com/photo-1613977257363-707ba9348227?q=80&w=1200&auto=format&fit=crop",
+    ],
+
+    negotiable: false,
+    postedBy: "Agent",
+    contactNumber: ["9814001111"],
+    preferredContact: "Call",
+
+    location: {
+      address: "Sector 8",
+      city: "Chandigarh",
+      sector: "Sector 8",
+      state: "Chandigarh",
+      country: "India",
+      slug: "7bhk-mansion-sector-8-chandigarh",
+      pincode: "160009",
+      coordinates: { type: "Point", coordinates: [76.7832, 30.7421] },
+    },
+
+    ownershipType: "Freehold",
+    approvedBy: "MC",
+    reraNumber: "CHD-ULTRA-2024-1001",
+
+    facilities: {
+      bedrooms: 7,
+      bathrooms: 8,
+      parkings: 6,
+      securityFeatures: ["CCTV", "Gated", "Guard"],
+      waterSupply: "Both",
+      powerBackup: true,
+      totalFloors: 4,
+    },
+
+    status: "Active",
+    isVerified: true,
+    views: 312,
+    leads: 41,
+  },
 ];
 
 export default properties;
