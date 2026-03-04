@@ -95,6 +95,8 @@ app.use("/api/v1/workflows", workflowRouter);
 
 // extra routes for seeding and migration (not under /api to avoid accidental calls in production)
 
+// Uncomment these lines to enable seeding and migration routes
+
 //app.use("/api", seedRoute);
 //app.use("/api", migrationRoutes);
 
