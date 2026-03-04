@@ -55,6 +55,7 @@ const propertySchema = new mongoose.Schema(
         "Apartment/Flat",
         "House/Villa",
         "Land/Plot",
+        "Builder Floor",
         "PG/Hostel",
         "Farmhouse",
         "Retail",
