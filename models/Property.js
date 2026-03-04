@@ -91,7 +91,16 @@ const propertySchema = new mongoose.Schema(
     },
     facing: {
       type: String,
-      enum: ["North", "South", "East", "West", "North-East", "North-West"],
+      enum: [
+        "North",
+        "South",
+        "East",
+        "West",
+        "North-East",
+        "North-West",
+        "South-East",
+        "South-West",
+      ],
     },
 
     price: { type: Number, min: 0, required: true, index: true },
