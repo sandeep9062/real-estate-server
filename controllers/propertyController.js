@@ -355,7 +355,7 @@ const getOwnedProperties = asyncHandler(async (req, res) => {
   const properties = await Property.find({
     user: req.user._id,
     deletedAt: null,
-  });
+  }).sort({ createdAt: -1 });
   res.json(properties);
 });
 

@@ -22,6 +22,9 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import workflowRouter from "./routes/workflow.routes.js";
+
+import developerRoutes from "./routes/developerRoutes.js";
+import projectRoutes from "./routes/projectRoutes.js";
 import seedRoute from "./routes/seedProperties.js";
 import migrationRoutes from "./routes/migration.js";
 connectDB();
@@ -92,6 +95,11 @@ app.use("/api/chatbot", chatbotRouter);
 app.use("/api/ai", aiRoutes);
 app.use("/api/v1/subscription", subscriptionRouter);
 app.use("/api/v1/workflows", workflowRouter);
+
+// Developer and Project routes
+
+app.use("/api/v1/developers", developerRoutes);
+app.use("/api/v1/projects", projectRoutes);
 
 // extra routes for seeding and migration (not under /api to avoid accidental calls in production)
 

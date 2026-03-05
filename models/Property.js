@@ -27,6 +27,17 @@ const propertySchema = new mongoose.Schema(
 
     description: { type: String, required: true, trim: true },
 
+    // This field will link the property to a builder project if applicable. For landlord listings, it will remain null.
+    projectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Project",
+      default: null, // Landlord properties not in a society stay null
+    },
+    isLandlordProperty: {
+      type: Boolean,
+      default: true,
+    },
+
     deal: {
       type: String,
       enum: ["Rent", "Sale"],
