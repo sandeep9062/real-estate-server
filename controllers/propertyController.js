@@ -140,6 +140,9 @@ const getProperties = asyncHandler(async (req, res) => {
       query["facilities.bedrooms"] = Number(bedrooms);
     }
   }
+  if (req.query.projectId) {
+    query.projectId = req.query.projectId;
+  }
   if (priceMin || priceMax) {
     query.price = {};
     if (priceMin) query.price.$gte = Number(priceMin);

@@ -25,8 +25,10 @@ import workflowRouter from "./routes/workflow.routes.js";
 
 import developerRoutes from "./routes/developerRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
-import seedRoute from "./routes/seedProperties.js";
-import migrationRoutes from "./routes/migration.js";
+
+//import seedRoute from "./routes/seeder.js";
+//import migrationRoutes from "./routes/migration.js";
+
 connectDB();
 
 const app = express();
@@ -105,6 +107,7 @@ app.use("/api/v1/projects", projectRoutes);
 
 // Uncomment these lines to enable seeding and migration routes
 
+//app.use("/api/seeder", seedRoute);
 //app.use("/api", seedRoute);
 //app.use("/api", migrationRoutes);
 
