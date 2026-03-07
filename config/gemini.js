@@ -30,13 +30,13 @@ export const getGeminiModel = () => {
   return genAI.getGenerativeModel({
     model: "gemini-2.5-flash",
     generationConfig: {
-      temperature: 0.4,          // Stable + professional output
-      maxOutputTokens: 1024,     // Enough for long descriptions
+      temperature: 0.4, // Stable + professional output
+      maxOutputTokens: 1024, // Enough for long descriptions
     },
     safetySettings: [
       { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
       { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-      { category: "HARM_CATEGORY_SEXUAL_CONTENT", threshold: "BLOCK_NONE" },
+      { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
       { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
     ],
   });
@@ -50,7 +50,18 @@ export async function generateWithGemini(prompt) {
   try {
     const geminiModel = getGeminiModel();
     const result = await geminiModel.generateContent(prompt);
-    return result.response.text();
+
+    // Check if response exists and has text
+    if (!result || !result.response) {
+      throw new Error("No response received from Gemini API");
+    }
+
+    const responseText = result.response.text();
+    if (!responseText) {
+      throw new Error("Empty response text from Gemini API");
+    }
+
+    return result.response;
   } catch (error) {
     console.error("❌ Gemini API Error:", error.message);
     throw new Error("AI service temporarily unavailable");
