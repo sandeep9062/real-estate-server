@@ -3,13 +3,16 @@ import { generateWithGemini } from "../../config/gemini.js";
 export async function extractPropertyDetails(text) {
   try {
     const prompt = `
+    You are a specialized Real Estate Data Parser.
       Extract property details from the text into a STRICT JSON object.
       
       Input: "${text}"
 
       IMPORTANT: 
-      1. Keep the description concise (max 2 sentences) to avoid cutting off.
+      1. Keep the description concise (max 6 sentences) to avoid cutting off.
       2. Return ONLY the JSON object. No backticks.
+      3. Format the description as a professional paragraph,buyer-focused description for the 'description' field.
+      4. Ensure all numbers are integers.
       
       Structure:
       {
