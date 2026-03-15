@@ -45,7 +45,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
-  "https://dashboard.propertybulbul.com",
+  "https://dashboard.propertybulbul.com", //admin-dashbaord
   "https://www.propertybulbul.com",
   "https://propertybulbul.com",
   // Add production frontend URL from environment variable
