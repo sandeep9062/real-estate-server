@@ -80,7 +80,20 @@ export const verifyAccessToken = (token) => {
  */
 export const getAccessTokenCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === "production";
+  const isDevelopment = process.env.NODE_ENV === "development";
 
+  // For development, we want to be more permissive to handle localhost
+  if (isDevelopment) {
+    return {
+      httpOnly: true,
+      secure: false, // Allow HTTP in development
+      sameSite: "lax", // More permissive for localhost
+      maxAge: ACCESS_TOKEN_COOKIE_MAX_AGE,
+      path: "/",
+    };
+  }
+
+  // Production configuration
   return {
     httpOnly: true,
     secure: isProduction,
@@ -97,7 +110,20 @@ export const getAccessTokenCookieOptions = () => {
  */
 export const getRefreshTokenCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === "production";
+  const isDevelopment = process.env.NODE_ENV === "development";
 
+  // For development, we want to be more permissive to handle localhost
+  if (isDevelopment) {
+    return {
+      httpOnly: true,
+      secure: false, // Allow HTTP in development
+      sameSite: "lax", // More permissive for localhost
+      maxAge: REFRESH_TOKEN_COOKIE_MAX_AGE,
+      path: "/",
+    };
+  }
+
+  // Production configuration
   return {
     httpOnly: true,
     secure: isProduction,
@@ -113,7 +139,19 @@ export const getRefreshTokenCookieOptions = () => {
  */
 export const getClearCookieOptions = () => {
   const isProduction = process.env.NODE_ENV === "production";
+  const isDevelopment = process.env.NODE_ENV === "development";
 
+  // For development, we want to be more permissive to handle localhost
+  if (isDevelopment) {
+    return {
+      httpOnly: true,
+      secure: false, // Allow HTTP in development
+      sameSite: "lax", // More permissive for localhost
+      path: "/",
+    };
+  }
+
+  // Production configuration
   return {
     httpOnly: true,
     secure: isProduction,

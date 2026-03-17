@@ -53,6 +53,7 @@ export const register = async (req, res) => {
       success: true,
       message: "Registration successful",
       user: result.user,
+      token: result.accessToken, // Include token in response for frontend fallback
     });
   } catch (error) {
     console.error("Register error:", error.message);
@@ -106,6 +107,7 @@ export const login = async (req, res) => {
       success: true,
       message: "Login successful",
       user: result.user,
+      token: result.accessToken, // Include token in response for frontend fallback
     });
   } catch (error) {
     console.error("Login error:", error.message);
@@ -149,6 +151,7 @@ export const googleAuth = async (req, res) => {
       success: true,
       message: "Google authentication successful",
       user: result.user,
+      token: result.accessToken, // Include token in response for frontend fallback
     });
   } catch (error) {
     console.error("Google auth error:", error.message);
@@ -191,6 +194,7 @@ export const refresh = async (req, res) => {
       success: true,
       message: "Token refreshed successfully",
       user: result.user,
+      token: result.accessToken, // Include token in response for frontend fallback
     });
   } catch (error) {
     console.error("Refresh token error:", error.message);

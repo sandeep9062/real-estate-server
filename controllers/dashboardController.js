@@ -19,6 +19,7 @@ export const getDashboardStats = async (req, res) => {
       monthlyRevenue,
       bookingsPerMonth,
       revenuePerMonth,
+      propertiesListedPerMonth,
     ] = await Promise.all([
       Property.countDocuments(),
       User.countDocuments(),
@@ -43,7 +44,7 @@ export const getDashboardStats = async (req, res) => {
               $gte: new Date(
                 new Date().getFullYear(),
                 new Date().getMonth(),
-                1
+                1,
               ),
             },
           },
@@ -150,6 +151,47 @@ export const getDashboardStats = async (req, res) => {
           },
         },
       ]),
+      Property.aggregate([
+        {
+          $group: {
+            _id: {
+              year: { $year: "$createdAt" },
+              month: { $month: "$createdAt" },
+            },
+            count: { $sum: 1 },
+          },
+        },
+        { $sort: { "_id.year": 1, "_id.month": 1 } },
+        { $limit: 12 },
+        {
+          $project: {
+            _id: 0,
+            month: {
+              $let: {
+                vars: {
+                  monthsInString: [
+                    ,
+                    "Jan",
+                    "Feb",
+                    "Mar",
+                    "Apr",
+                    "May",
+                    "Jun",
+                    "Jul",
+                    "Aug",
+                    "Sep",
+                    "Oct",
+                    "Nov",
+                    "Dec",
+                  ],
+                },
+                in: { $arrayElemAt: ["$$monthsInString", "$_id.month"] },
+              },
+            },
+            properties: "$count",
+          },
+        },
+      ]),
     ]);
 
     res.json({
@@ -162,6 +204,7 @@ export const getDashboardStats = async (req, res) => {
       monthlyRevenue: monthlyRevenue[0]?.monthlyRevenue || 0,
       bookingsPerMonth,
       revenuePerMonth,
+      propertiesListedPerMonth,
     });
   } catch (error) {
     console.error("Error fetching dashboard stats:", error);
