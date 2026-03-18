@@ -1,4 +1,5 @@
 import asyncHandler from "express-async-handler";
+import mongoose from "mongoose";
 import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
