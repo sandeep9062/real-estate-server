@@ -3,6 +3,27 @@ import mongoose from "mongoose";
 import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
+import { generatePropertyPDF } from "../services/pdfService.js";
+
+const getPropertyBrochure = async (req, res) => {
+  try {
+    const property = await Property.findById(req.params.id);
+    if (!property) return res.status(404).send("Property not found");
+
+    const pdfBuffer = await generatePropertyPDF(property);
+
+    // Set headers so the browser downloads it as a PDF
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename=${property.title.replace(/\s+/g, "_")}_Brochure.pdf`,
+      "Content-Length": pdfBuffer.length,
+    });
+
+    res.send(pdfBuffer);
+  } catch (error) {
+    res.status(500).send("Error generating PDF");
+  }
+};
 
 // @desc    Create a property
 // @route   POST /api/properties
@@ -365,6 +386,7 @@ const getOwnedProperties = asyncHandler(async (req, res) => {
 
 export {
   createProperty,
+  getPropertyBrochure,
   getProperties,
   getPropertyById,
   updateProperty,

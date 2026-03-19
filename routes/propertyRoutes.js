@@ -7,6 +7,7 @@ import {
   updateProperty,
   deleteProperty,
   getOwnedProperties,
+  getPropertyBrochure,
 } from "../controllers/propertyController.js";
 
 import { protect } from "../middlewares/authMiddleware.js";
@@ -22,5 +23,7 @@ router
   .get(getPropertyById)
   .put(protect, upload.array("image", 25), updateProperty)
   .delete(protect, deleteProperty);
+
+router.get("/:id/download-brochure", getPropertyBrochure);
 
 export default router;
