@@ -8,20 +8,41 @@ import { generatePropertyPDF } from "../services/pdfService.js";
 const getPropertyBrochure = async (req, res) => {
   try {
     const property = await Property.findById(req.params.id);
-    if (!property) return res.status(404).send("Property not found");
+    if (!property) {
+      return res.status(404).json({
+        success: false,
+        message: "Property not found",
+      });
+    }
+
+    if (!property.isActive || property.deletedAt) {
+      return res.status(404).json({
+        success: false,
+        message: "Property is no longer available",
+      });
+    }
 
     const pdfBuffer = await generatePropertyPDF(property);
 
     // Set headers so the browser downloads it as a PDF
+    const filename = `${property.title.replace(/\s+/g, "_")}_Brochure.pdf`;
     res.set({
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename=${property.title.replace(/\s+/g, "_")}_Brochure.pdf`,
+      "Content-Disposition": `attachment; filename="${filename}"`,
       "Content-Length": pdfBuffer.length,
+      "Cache-Control": "no-cache, no-store, must-revalidate",
+      Pragma: "no-cache",
+      Expires: "0",
     });
 
     res.send(pdfBuffer);
   } catch (error) {
-    res.status(500).send("Error generating PDF");
+    console.error("Brochure download error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to generate brochure. Please try again later.",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined,
+    });
   }
 };
 

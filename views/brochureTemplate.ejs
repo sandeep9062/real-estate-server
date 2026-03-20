@@ -25,7 +25,8 @@
         .gallery-section { margin-top: 25px; }
         
         /* Layout for 1 Image */
-        .single-hero { width: 100%; height: 380px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.05); }
+        .single-hero { width: 100%; height: 380px; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 20px rgba(0,0,0,0.05); background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--light); font-size: 14px; }
+        .single-hero img { width: 100%; height: 100%; object-fit: cover; display: block; }
         
         /* Layout for Multi-Images (2-5) */
         .gallery-grid { 
@@ -34,7 +35,7 @@
             grid-template-rows: 300px 120px; 
             gap: 12px; 
         }
-        .img-box { border-radius: 15px; overflow: hidden; background: var(--bg); }
+        .img-box { border-radius: 15px; overflow: hidden; background: var(--bg); display: flex; align-items: center; justify-content: center; color: var(--light); font-size: 12px; }
         .img-box img { width: 100%; height: 100%; object-fit: cover; display: block; }
         .img-main { grid-column: 1 / span 4; }
         .img-sub { grid-row: 2; }
@@ -81,7 +82,7 @@
             <div class="logo">PropertyBulbul</div>
             <div class="ref-tag">
                 VERIFIED PROPERTY<br>
-                REF: <%= property._id.toString().substring(0,8).toUpperCase() %>
+                REF: <%= property._id ? property._id.toString().substring(0,8).toUpperCase() : 'PROPERTY001' %>
             </div>
         </div>
 
@@ -145,7 +146,7 @@
         <div class="footer">
             <div class="agent-info">
                 <strong>Inquiry Contact:</strong><br>
-                <%= property.userEmail %>
+                <%= property.user && property.user.email ? property.user.email : 'Contact via PropertyBulbul' %>
             </div>
             <div class="brand-footer">
                 Official Listing Brochure<br>
