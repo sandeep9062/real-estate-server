@@ -1,4 +1,4 @@
-import puppeteer from "puppeteer";
+import htmlPdf from "html-pdf-node";
 import ejs from "ejs";
 import path from "path";
 
@@ -33,59 +33,22 @@ export const generatePropertyPDF = async (propertyData) => {
       property: sanitizedProperty,
     });
 
-    // 5. Launch Puppeteer to "Print" the PDF
-    const browser = await puppeteer.launch({
-      headless: "new",
-      args: [
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-dev-shm-usage",
-        "--disable-accelerated-2d-canvas",
-        "--no-first-run",
-        "--no-zygote",
-        "--disable-gpu",
-        "--disable-web-security",
-        "--disable-features=IsolateOrigins,site-per-process",
-        "--disable-features=BlockInsecurePrivateNetworkRequests",
-      ],
-    });
-
-    const page = await browser.newPage();
-
-    // Set viewport for consistent rendering
-    await page.setViewport({ width: 800, height: 1200 });
-
-    // Set user agent to ensure proper rendering
-    await page.setUserAgent(
-      "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-    );
-
-    // Handle image loading errors
-    await page.setRequestInterception(true);
-    page.on("request", (request) => {
-      if (request.resourceType() === "image") {
-        // Allow all image requests
-        request.continue();
-      } else {
-        request.continue();
-      }
-    });
-
-    await page.setContent(html, {
-      waitUntil: "domcontentloaded",
-      timeout: 30000,
-    });
-
-    // Wait a bit more for images to load, but don't wait indefinitely
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-
-    const pdfBuffer = await page.pdf({
+    // 5. Configure PDF options
+    const options = {
       format: "A4",
       printBackground: true,
-      margin: { top: "20px", right: "20px", bottom: "20px", left: "20px" },
-    });
+      margin: {
+        top: "20px",
+        right: "20px",
+        bottom: "20px",
+        left: "20px",
+      },
+    };
 
-    await browser.close();
+    // 6. Generate PDF from HTML
+    const file = { content: html };
+    const pdfBuffer = await htmlPdf.generatePdf(file, options);
+
     return pdfBuffer;
   } catch (error) {
     console.error("Error generating PDF:", error);
