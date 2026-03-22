@@ -59,6 +59,7 @@ const createProperty = asyncHandler(async (req, res) => {
     area,
     availability,
     furnishing,
+    facing,
     price,
     postedBy,
     location: rawLocation,
@@ -108,6 +109,7 @@ const createProperty = asyncHandler(async (req, res) => {
     area: typeof area === "string" ? JSON.parse(area) : area,
     availability,
     furnishing,
+    facing,
     price,
     postedBy,
     location,
@@ -269,6 +271,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     area,
     availability,
     furnishing,
+    facing,
     price,
     postedBy,
     location: rawLocation,
@@ -293,6 +296,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     (typeof area === "string" ? JSON.parse(area) : area) || property.area;
   property.availability = availability || property.availability;
   property.furnishing = furnishing || property.furnishing;
+  property.facing = facing || property.facing;
   property.price = price || property.price;
   property.postedBy = postedBy || property.postedBy;
 
