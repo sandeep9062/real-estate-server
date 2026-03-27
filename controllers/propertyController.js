@@ -3,6 +3,7 @@ import mongoose from "mongoose";
 import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
+import Lead from "../models/Lead.js";
 import { generatePropertyPDF } from "../services/pdfService.js";
 
 const getPropertyBrochure = async (req, res) => {
@@ -409,6 +410,83 @@ const getOwnedProperties = asyncHandler(async (req, res) => {
   res.json(properties);
 });
 
+// @desc    Create a WhatsApp lead for brochure request
+// @route   POST /api/properties/:id/whatsapp-lead
+// @access  Private
+const createWhatsAppLead = asyncHandler(async (req, res) => {
+  const { userName, userPhone } = req.body;
+  const propertyId = req.params.id;
+
+  // Validate required fields
+  if (!userName || !userPhone) {
+    return res.status(400).json({
+      success: false,
+      message: "Name and phone number are required",
+    });
+  }
+
+  // Validate phone number format (10 digits)
+  if (!/^\d{10}$/.test(userPhone)) {
+    return res.status(400).json({
+      success: false,
+      message: "Please enter a valid 10-digit phone number",
+    });
+  }
+
+  // Check if property exists and is active
+  const property = await Property.findById(propertyId);
+  if (!property || !property.isActive || property.deletedAt) {
+    return res.status(404).json({
+      success: false,
+      message: "Property not found or no longer available",
+    });
+  }
+
+  // Get broker information (property owner)
+  const broker = await User.findById(property.user);
+  if (!broker) {
+    return res.status(404).json({
+      success: false,
+      message: "Broker information not found",
+    });
+  }
+
+  // Generate brochure URL
+  const brochureUrl = `${process.env.FRONTEND_URL || "http://localhost:3000"}/api/properties/${propertyId}/download-brochure`;
+
+  // Create lead record
+  const lead = new Lead({
+    propertyId,
+    brokerId: property.user,
+    userName,
+    userPhone,
+    type: "BROCHURE_REQUEST",
+    status: "PENDING",
+    brochureUrl,
+    source: "WHATSAPP",
+    notes: `Lead generated via WhatsApp sharing for property: ${property.title}`,
+  });
+
+  const createdLead = await lead.save();
+
+  // Log the lead creation for now (can be extended to send notifications)
+  console.log(
+    `New WhatsApp lead created: ${userName} for property ${property.title} (${propertyId})`,
+  );
+
+  // Return success response with brochure URL
+  res.status(201).json({
+    success: true,
+    message: "Lead created successfully. Opening WhatsApp chat with broker...",
+    data: {
+      leadId: createdLead._id,
+      brochureUrl,
+      brokerPhone: broker.contactNumber?.[0] || broker.phone,
+      brokerName: broker.name,
+    },
+  });
+});
+
 export {
   createProperty,
   getPropertyBrochure,
@@ -417,4 +495,5 @@ export {
   updateProperty,
   deleteProperty,
   getOwnedProperties,
+  createWhatsAppLead,
 };

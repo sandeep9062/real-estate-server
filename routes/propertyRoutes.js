@@ -8,6 +8,7 @@ import {
   deleteProperty,
   getOwnedProperties,
   getPropertyBrochure,
+  createWhatsAppLead,
 } from "../controllers/propertyController.js";
 
 import { protect } from "../middlewares/authMiddleware.js";
@@ -25,5 +26,6 @@ router
   .delete(protect, deleteProperty);
 
 router.get("/:id/download-brochure", getPropertyBrochure);
+router.post("/:id/whatsapp-lead", protect, createWhatsAppLead);
 
 export default router;
