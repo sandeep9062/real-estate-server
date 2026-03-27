@@ -70,7 +70,6 @@ const userSchema = mongoose.Schema(
       unique: true,
     },
     bookedVisits: [{ type: mongoose.Schema.Types.ObjectId, ref: "Booking" }],
-    favProperties: [{ type: mongoose.Schema.Types.ObjectId, ref: "Property" }],
     ownedProperties: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
     ],

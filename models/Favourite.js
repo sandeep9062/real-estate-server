@@ -1,6 +1,6 @@
 import mongoose from "mongoose";
 
-const favoriteSchema = new mongoose.Schema(
+const favouriteSchema = new mongoose.Schema(
   {
     user: {
       type: mongoose.Schema.Types.ObjectId,
@@ -19,9 +19,9 @@ const favoriteSchema = new mongoose.Schema(
 );
 
 // High-performance index for "Check if I liked this" and "List all my likes"
-favoriteSchema.index({ user: 1, property: 1 }, { unique: true });
+favouriteSchema.index({ user: 1, property: 1 }, { unique: true });
 // Index for "How many people liked this property?"
-favoriteSchema.index({ property: 1 });
+favouriteSchema.index({ property: 1 });
 
-const Favorite = mongoose.model("Favorite", favoriteSchema);
-export default Favorite;
+const Favourite = mongoose.model("Favourite", favouriteSchema);
+export default Favourite;

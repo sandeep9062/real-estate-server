@@ -8,6 +8,7 @@ import {
   getRefreshTokenExpiry,
 } from "./jwt.utils.js";
 import { createNotification } from "../controllers/notificationController.js";
+import Favourite from "../models/Favourite.js";
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -296,7 +297,6 @@ export const logoutAllDevices = async (userId) => {
 export const getCurrentUser = async (userId) => {
   const user = await User.findById(userId)
     .select("-password -refreshTokens -resetPasswordToken -resetPasswordExpire")
-    .populate("favProperties")
     .populate("bookedVisits")
     .populate("ownedProperties");
 
@@ -304,7 +304,13 @@ export const getCurrentUser = async (userId) => {
     throw new Error("User not found");
   }
 
-  return user.toJSON();
+  // Add favourites count
+  const favouritesCount = await Favourite.countDocuments({ user: userId });
+
+  const userObj = user.toJSON();
+  userObj.favouritesCount = favouritesCount;
+
+  return userObj;
 };
 
 /**
