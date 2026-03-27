@@ -4,7 +4,6 @@ import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import Lead from "../models/Lead.js";
-import Favourite from "../models/Favourite.js";
 import { generatePropertyPDF } from "../services/pdfService.js";
 
 const getPropertyBrochure = async (req, res) => {
@@ -351,7 +350,11 @@ const deleteProperty = asyncHandler(async (req, res) => {
     }
 
     // 1️⃣ Remove property from ALL users' favorites
-    await Favourite.deleteMany({ property: property._id }, { session });
+    await User.updateMany(
+      { favProperties: property._id },
+      { $pull: { favProperties: property._id } },
+      { session },
+    );
 
     // 2️⃣ Find & delete all bookings related to this property
     const bookings = await Booking.find(

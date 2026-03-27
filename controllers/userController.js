@@ -1,8 +1,7 @@
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
-import { createNotification } from "./notificationController.js";
+import { createNotification } from './notificationController.js';
 import mongoose from "mongoose";
-import Favourite from "../models/Favourite.js";
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -15,18 +14,16 @@ export const getUsers = async (req, res) => {
 
 // Helper function to check if a string is a valid MongoDB ObjectId
 const isValidObjectId = (id) => {
-  return (
-    mongoose.Types.ObjectId.isValid(id) &&
-    new mongoose.Types.ObjectId(id).toString() === id
-  );
+  return mongoose.Types.ObjectId.isValid(id) && 
+         (new mongoose.Types.ObjectId(id)).toString() === id;
 };
 
 export const getUser = async (req, res) => {
   try {
     const userId = req.params.id;
-
+    
     let user;
-
+    
     // Find in the main users collection if it's a valid ObjectId
     if (isValidObjectId(userId)) {
       user = await User.findById(userId)
@@ -168,11 +165,13 @@ export const userProfile = async (req, res) => {
 
 export const userFavourites = async (req, res) => {
   try {
-    const favourites = await Favourite.find({ user: req.user._id })
-      .populate("property")
-      .sort({ createdAt: -1 });
+    const user = await User.findById(req.user._id).populate("favProperties");
 
-    res.status(200).json(favourites);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user.favProperties);
   } catch (err) {
     console.log(err);
     res.status(500).json({ message: "Server Error" });
@@ -188,25 +187,23 @@ export const toggleFavourite = async (req, res) => {
   }
 
   try {
-    const existingFavourite = await Favourite.findOne({
-      user: req.user._id,
-      property: propId,
-    });
+    const alreadyFavourited = user.favProperties.some(
+      (id) => id.toString() === propId
+    );
 
-    if (existingFavourite) {
-      // Remove favourite
-      await Favourite.deleteOne({ _id: existingFavourite._id });
-      res.status(200).json({ message: "Removed from favourites" });
+    if (alreadyFavourited) {
+      user.favProperties = user.favProperties.filter(
+        (id) => id.toString() !== propId
+      );
     } else {
-      // Add favourite
-      const newFavourite = new Favourite({
-        user: req.user._id,
-        property: propId,
-      });
-      await newFavourite.save();
-      await newFavourite.populate("property");
-      res.status(200).json(newFavourite);
+      user.favProperties.push(propId);
     }
+
+    await user.save();
+    const populatedUser = await User.findById(req.user._id).populate(
+      "favProperties"
+    );
+    res.status(200).json(populatedUser);
   } catch (err) {
     console.log(err);
     res.status(500).json({ message: "Server Error" });
@@ -247,7 +244,7 @@ export const bookVisit = async (req, res) => {
     }
 
     // Get property details for notification
-    const Property = (await import("../models/Property.js")).default;
+    const Property = (await import('../models/Property.js')).default;
     const property = await Property.findById(propertyId);
 
     if (!property) {
@@ -273,9 +270,9 @@ export const bookVisit = async (req, res) => {
           userId: property.user,
           title: `New Visit Booking`,
           message: `${user.name} has booked a visit for your property "${property.title}" on ${new Date(date).toLocaleDateString()}`,
-          type: "success",
-          category: "booking",
-          priority: "high",
+          type: 'success',
+          category: 'booking',
+          priority: 'high',
           metadata: {
             bookingId: newBooking._id,
             propertyId: property._id,
@@ -285,22 +282,22 @@ export const bookVisit = async (req, res) => {
           actionUrl: `/dashboard/bookings/${newBooking._id}`,
         });
       } catch (notificationError) {
-        console.error("Error creating owner notification:", notificationError);
+        console.error('Error creating owner notification:', notificationError);
       }
     }
 
     // Create notification for admins
     try {
-      const adminUsers = await User.find({ role: "admin" });
+      const adminUsers = await User.find({ role: 'admin' });
 
       for (const admin of adminUsers) {
         await createNotification({
           userId: admin._id,
           title: `New Booking Received`,
           message: `New visit booking for "${property.title}" by ${user.name} for ${new Date(date).toLocaleDateString()}`,
-          type: "info",
-          category: "booking",
-          priority: "medium",
+          type: 'info',
+          category: 'booking',
+          priority: 'medium',
           metadata: {
             bookingId: newBooking._id,
             propertyId: property._id,
@@ -311,7 +308,7 @@ export const bookVisit = async (req, res) => {
         });
       }
     } catch (notificationError) {
-      console.error("Error creating admin notifications:", notificationError);
+      console.error('Error creating admin notifications:', notificationError);
     }
 
     const populatedUser = await User.findById(req.user._id)
@@ -333,7 +330,7 @@ export const cancelVisit = async (req, res) => {
     }
 
     user.bookedVisits = (user.bookedVisits || []).filter(
-      (b) => String(b?.id) !== String(propertyId),
+      (b) => String(b?.id) !== String(propertyId)
     );
 
     const updated = await user.save();
