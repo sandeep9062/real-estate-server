@@ -5,7 +5,7 @@ import Contact from "../models/Contact.js";
 // @access  Public
 export const createContact = async (req, res) => {
   try {
-    const { name, email, phone, subject, message } = req.body;
+    const { name, email, phone, subject, message, recaptchaToken } = req.body;
 
     const newContact = new Contact({
       name,

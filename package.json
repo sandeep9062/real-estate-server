@@ -17,7 +17,7 @@
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
     "@upstash/workflow": "^0.2.22",
-    "axios": "^1.13.2",
+    "axios": "^1.14.0",
     "bcryptjs": "^3.0.3",
     "body-parser": "^2.2.0",
     "cloudinary": "^2.9.0",
@@ -31,13 +31,13 @@
     "express-rate-limit": "^8.2.1",
     "fuse.js": "^7.1.0",
     "google-auth-library": "^10.5.0",
+    "html-pdf-node": "^1.0.8",
     "jsonwebtoken": "^9.0.2",
     "mongodb": "^7.1.0",
     "mongoose": "9.2.0",
     "multer": "^2.0.2",
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
-    "html-pdf-node": "^1.0.8",
     "uuid": "^13.0.0"
   }
 }
