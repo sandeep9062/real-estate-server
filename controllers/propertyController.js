@@ -4,49 +4,44 @@ import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import Lead from "../models/Lead.js";
-import { generatePropertyPDF } from "../services/pdfService.js";
+//import { generatePropertyPDF } from "../services/pdfService.js";
+import axios from "axios";
 
-const getPropertyBrochure = async (req, res) => {
+export const getPropertyBrochure = async (req, res) => {
   try {
-    const property = await Property.findById(req.params.id);
-    if (!property) {
-      return res.status(404).json({
-        success: false,
-        message: "Property not found",
-      });
-    }
+    const { id } = req.params;
 
-    if (!property.isActive || property.deletedAt) {
-      return res.status(404).json({
-        success: false,
-        message: "Property is no longer available",
-      });
-    }
+    // 1. Fetch property from your DB (MongoDB/Postgres)
+    const property = await Property.findById(id);
+    if (!property) return res.status(404).send("Property not found");
 
-    const pdfBuffer = await generatePropertyPDF(property);
+    // 2. Call your new Render Microservice
+    console.log("Calling PDF Service...");
+    const response = await axios.post(
+      `${process.env.PDF_SERVICE_URL}/generate-brochure`,
+      { property }, // Send the property data as the body
+      {
+        responseType: "arraybuffer", // Required for binary files
+        headers: { "Content-Type": "application/json" },
+      },
+    );
 
-    // Set headers so the browser downloads it as a PDF
-    const filename = `${property.title.replace(/\s+/g, "_")}_Brochure.pdf`;
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
-      "Content-Length": pdfBuffer.length,
-      "Cache-Control": "no-cache, no-store, must-revalidate",
-      Pragma: "no-cache",
-      Expires: "0",
-    });
+    // 3. Set headers so the browser knows it's a PDF
+    res.contentType("application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=Brochure-${id}.pdf`,
+    );
 
-    res.send(pdfBuffer);
+    // 4. Send the PDF buffer to the user
+    res.send(response.data);
   } catch (error) {
-    console.error("Brochure download error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Failed to generate brochure. Please try again later.",
-      error: process.env.NODE_ENV === "development" ? error.message : undefined,
-    });
+    console.error("PDF Generation Error:", error.message);
+    res
+      .status(500)
+      .send("Error generating brochure. The service might be waking up.");
   }
 };
-
 // @desc    Create a property
 // @route   POST /api/properties
 // @access  Private
@@ -489,7 +484,6 @@ const createWhatsAppLead = asyncHandler(async (req, res) => {
 
 export {
   createProperty,
-  getPropertyBrochure,
   getProperties,
   getPropertyById,
   updateProperty,
