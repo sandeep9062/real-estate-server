@@ -1,9 +1,6 @@
 import express from "express";
-import { developers } from "../data/developers.js";
-import { projects } from "../data/projects.js";
-import Developer from "../models/Developer.js";
-import Project from "../models/Project.js";
-import Property from "../models/Property.js";
+import Journal from "../models/Journal.js";
+import { journals } from "../data/journal.js";
 
 const router = express.Router();
 
@@ -19,68 +16,33 @@ const slugify = (text) =>
 
 router.post("/seed", async (req, res) => {
   try {
-    // 1. Get total count of your 147 landlord properties
-    const count = await Property.countDocuments();
+    // Seed Journal data
 
-    // 2. Clean up existing authority data
-    await Developer.deleteMany({});
-    await Project.deleteMany({});
-
-    // 3. Insert Developers
-    const createdDevs = await Developer.insertMany(developers);
-
-    // 4. Prepare and Insert Projects
-    const projectData = projects.map((p) => ({
-      ...p,
-      developer: createdDevs.find((d) => d.name === p.developerName)?._id,
-      slug: slugify(p.name),
-    }));
-    const createdProjects = await Project.insertMany(projectData);
-
-    // 5. Link Landlord Properties to these new Projects
-    for (const project of createdProjects) {
-      let keywords = [];
-      if (project.name.includes("Sushma"))
-        keywords = [
-          /Sushma/i,
-          /Aerocity/i,
-          /Joynest/i,
-          /Zirakpur/i,
-          /Airport/i,
-        ];
-      if (project.name.includes("SBP"))
-        keywords = [/SBP/i, /Dreams/i, /Sector 115/i, /Kharar/i, /Landran/i];
-      if (project.name.includes("Hero"))
-        keywords = [/Hero/i, /Sector 88/i, /Mohali/i];
-
-      await Property.updateMany(
-        {
-          $or: [
-            { "location.address": { $in: keywords } },
-            { "location.sector": { $in: keywords } },
-            { "location.city": { $in: keywords } },
-            { title: { $in: keywords } },
-            { description: { $in: keywords } },
-          ],
-        },
-        { $set: { projectId: project._id, isVerified: true } },
-      );
+    const existingJournals = await Journal.find();
+    // Journal.deleteMany({}).then(() => {
+    //   console.log("Existing journal data cleared");
+    // });
+    if (existingJournals.length === 0) {
+      const journalPromises = journals.map((journal) => {
+        const journalData = {
+          title: journal.title,
+          slug: journal.slug,
+          category: journal.category,
+          excerpt: journal.excerpt,
+          content: journal.content,
+          coverImage: journal.coverImage,
+          targetSector: journal.targetSector,
+          createdAt: new Date(journal.createdAt),
+        };
+        return new Journal(journalData).save();
+      });
+      await Promise.all(journalPromises);
+      console.log("Journal data seeded successfully");
+    } else {
+      console.log("Journal data already exists");
     }
-
-    const finalLinked = await Property.countDocuments({ isVerified: true });
-
-    res.status(200).json({
-      success: true,
-      message: "Seeding and linking finished.",
-      totalProperties: count,
-      verifiedProperties: finalLinked,
-    });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: "Seeding failed",
-      error: error.message,
-    });
+    console.error("Error seeding journal data:", error);
   }
 });
 

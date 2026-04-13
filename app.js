@@ -25,8 +25,9 @@ import workflowRouter from "./routes/workflow.routes.js";
 
 import developerRoutes from "./routes/developerRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
+import journalRoutes from "./routes/journalRoutes.js";
 
-//import seedRoute from "./routes/seeder.js";
+import seedRoute from "./routes/seeder.js";
 //import migrationRoutes from "./routes/migration.js";
 
 connectDB();
@@ -90,6 +91,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/auth", authLegacyRoutes); // Legacy routes for forgot-password, reset-password, profile, change-password
 app.use("/api/v1/enquiry", enquiryRoutes);
 app.use("/api/properties", propertyRoutes);
+app.use("/api/v1/journals", journalRoutes);
 app.use("/api/v1/contacts", contactRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);
@@ -108,8 +110,7 @@ app.use("/api/v1/projects", projectRoutes);
 
 // Uncomment these lines to enable seeding and migration routes
 
-//app.use("/api/seeder", seedRoute);
-//app.use("/api", seedRoute);
+app.use("/api/seeder", seedRoute);
 //app.use("/api", migrationRoutes);
 
 // Error handling middleware
