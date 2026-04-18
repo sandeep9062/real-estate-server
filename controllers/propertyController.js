@@ -4,44 +4,47 @@ import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import Lead from "../models/Lead.js";
-//import { generatePropertyPDF } from "../services/pdfService.js";
+import { generatePropertyPDF } from "../services/pdfService.js";
 import axios from "axios";
 
-export const getPropertyBrochure = async (req, res) => {
+/**
+ * @desc    Generate and stream property brochure PDF
+ * @route   GET /api/properties/:id/brochure
+ * @access  Public/Private (Depending on your requirements)
+ */
+export const getPropertyBrochure = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  // 1. Fetch property from DB
+  // Use .lean() to get a plain JS object, which is easier for EJS to process
+  const property = await Property.findById(id).populate("user").lean();
+
+  if (!property) {
+    res.status(404);
+    throw new Error("Property not found");
+  }
+
   try {
-    const { id } = req.params;
+    // 2. Generate the PDF buffer using your local helper
+    console.log("Generating PDF locally...");
+    const pdfBuffer = await generatePropertyPDF(property);
 
-    // 1. Fetch property from your DB (MongoDB/Postgres)
-    const property = await Property.findById(id);
-    if (!property) return res.status(404).send("Property not found");
+    // 3. Set PDF response headers
+    res.set({
+      "Content-Type": "application/pdf",
+      "Content-Disposition": `attachment; filename="Brochure-${id}.pdf"`,
+      "Content-Length": pdfBuffer.length,
+    });
 
-    // 2. Call your new Render Microservice
-    console.log("Calling PDF Service...");
-    const response = await axios.post(
-      `${process.env.PDF_SERVICE_URL}/generate-brochure`,
-      { property }, // Send the property data as the body
-      {
-        responseType: "arraybuffer", // Required for binary files
-        headers: { "Content-Type": "application/json" },
-      },
-    );
-
-    // 3. Set headers so the browser knows it's a PDF
-    res.contentType("application/pdf");
-    res.setHeader(
-      "Content-Disposition",
-      `attachment; filename=Brochure-${id}.pdf`,
-    );
-
-    // 4. Send the PDF buffer to the user
-    res.send(response.data);
+    // 4. Send the buffer directly
+    res.end(pdfBuffer);
   } catch (error) {
     console.error("PDF Generation Error:", error.message);
-    res
-      .status(500)
-      .send("Error generating brochure. The service might be waking up.");
+    res.status(500);
+    throw new Error("Failed to generate PDF brochure");
   }
-};
+});
+
 // @desc    Create a property
 // @route   POST /api/properties
 // @access  Private
