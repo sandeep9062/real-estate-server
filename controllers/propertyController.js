@@ -4,19 +4,20 @@ import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import Lead from "../models/Lead.js";
-import { generatePropertyPDF } from "../services/pdfService.js";
+
 import axios from "axios";
+
+const PDF_SERVICE_URL =
+  process.env.PDF_SERVICE_URL || "https://real-estate-pdf-service.onrender.com";
 
 /**
  * @desc    Generate and stream property brochure PDF
- * @route   GET /api/properties/:id/brochure
- * @access  Public/Private (Depending on your requirements)
+ * @route   GET /api/properties/:id/download-brochure
+ * @access  Public
  */
 export const getPropertyBrochure = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  // 1. Fetch property from DB
-  // Use .lean() to get a plain JS object, which is easier for EJS to process
   const property = await Property.findById(id).populate("user").lean();
 
   if (!property) {
@@ -24,25 +25,46 @@ export const getPropertyBrochure = asyncHandler(async (req, res) => {
     throw new Error("Property not found");
   }
 
-  try {
-    // 2. Generate the PDF buffer using your local helper
-    console.log("Generating PDF locally...");
-    const pdfBuffer = await generatePropertyPDF(property);
+  const propertyForPDF = {
+    ...property,
+    image: property.image?.slice(0, 1) || [],
+  };
 
-    // 3. Set PDF response headers
-    res.set({
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="Brochure-${id}.pdf"`,
-      "Content-Length": pdfBuffer.length,
-    });
+  // Use native fetch instead of axios — no arraybuffer conversion issues
+  const response = await fetch(`${PDF_SERVICE_URL}/generate-brochure`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ property: propertyForPDF }),
+    signal: AbortSignal.timeout(240000),
+  });
 
-    // 4. Send the buffer directly
-    res.end(pdfBuffer);
-  } catch (error) {
-    console.error("PDF Generation Error:", error.message);
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("PDF service error:", errorText);
     res.status(500);
-    throw new Error("Failed to generate PDF brochure");
+    throw new Error("PDF service failed to generate brochure");
   }
+
+  // Get raw binary as ArrayBuffer then convert to Buffer — no corruption
+  const arrayBuffer = await response.arrayBuffer();
+  const pdfBuffer = Buffer.from(arrayBuffer);
+
+  // Verify it's actually a PDF
+  const header = pdfBuffer.slice(0, 5).toString();
+  console.log("PDF header:", header); // Should print %PDF-
+  if (!header.startsWith("%PDF")) {
+    res.status(500);
+    throw new Error("Received invalid PDF from service");
+  }
+
+  res.set({
+    "Content-Type": "application/pdf",
+    "Content-Disposition": `attachment; filename="Brochure-${id}.pdf"`,
+    "Content-Length": pdfBuffer.length,
+    "Cache-Control": "no-cache",
+  });
+
+  res.send(pdfBuffer);
 });
 
 // @desc    Create a property
@@ -199,7 +221,7 @@ const getProperties = asyncHandler(async (req, res) => {
   }
 
   const properties = await Property.find(query)
-    .populate("user", "name email")
+    .populate("user", "name email phone")
     .sort({ createdAt: -1 });
   // sort to get latest listed properties at top
   const transformedProperties = properties.map((property) => {
@@ -226,7 +248,7 @@ const getPropertyById = asyncHandler(async (req, res) => {
     _id: req.params.id,
     isActive: true,
     deletedAt: null,
-  }).populate("user", "name email");
+  }).populate("user", "name email phone");
 
   if (property) {
     const propertyObj = property.toObject();
