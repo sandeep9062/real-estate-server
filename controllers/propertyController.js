@@ -27,7 +27,7 @@ export const getPropertyBrochure = asyncHandler(async (req, res) => {
 
   const propertyForPDF = {
     ...property,
-    image: property.image?.slice(0, 1) || [],
+    image: property.image?.slice(0, 3) || [],
   };
 
   // Use native fetch instead of axios — no arraybuffer conversion issues
