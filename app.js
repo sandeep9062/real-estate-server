@@ -34,6 +34,8 @@ connectDB();
 
 const app = express();
 const PORT = process.env.PORT || 9000;
+const PDF_SERVICE_URL =
+  process.env.PDF_SERVICE_URL || "https://real-estate-pdf-service.onrender.com";
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -177,6 +179,14 @@ app.listen(PORT, () => {
       const response = await fetch(`${SERVER_URL}/api/ping`);
       const responseTime = Date.now() - startTime;
       const data = await response.json();
+
+      // 2. NEW: Ping PDF Service to keep it awake
+      try {
+        await fetch(`${PDF_SERVICE_URL}/ping`);
+        console.log(`🔄 [${pingTime.toISOString()}] PDF Service kept awake.`);
+      } catch (pdfErr) {
+        console.error(`❌ PDF Service Ping failed:`, pdfErr.message);
+      }
 
       // Save successful ping log to database
       const pingLog = new PingLog({
