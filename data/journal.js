@@ -1,5 +1,86 @@
 export const journals = [
   {
+    title: "Living on VIP Road, Zirakpur: Connectivity vs. Congestion",
+    slug: "zirakpur-vip-road-living-guide-pros-cons",
+    category: "Neighborhood Review",
+    targetSector: "Zirakpur",
+    coverImage:
+      "https://images.unsplash.com/photo-1545324418-cc1a3fa10c00?q=80&w=1200",
+    excerpt:
+      "VIP Road offers the best shopping and high-rises in Zirakpur, but is it the right fit for you? We analyze the traffic, amenities, and price trends for 2026.",
+    content:
+      "<h2>The Heart of Zirakpur: VIP Road</h2>" +
+      "<p>If you've ever looked for a flat in Zirakpur, you've definitely heard of VIP Road. It is the most vibrant, commercial, and densely populated stretch in the city. But does the reality match the hype? Here is our honest breakdown.</p>" +
+      "<h3>The Pros: Why People Love It</h3>" +
+      "<ul>" +
+      "<li><strong>Walkability:</strong> It is one of the few areas where you don't need a car for daily needs. From international brands like Starbucks to local organic markets, everything is within 500 meters.</li>" +
+      "<li><strong>Premium Societies:</strong> VIP Road hosts some of the most established gated communities in the Tricity, offering excellent security and club facilities.</li>" +
+      "<li><strong>Rental Demand:</strong> Because of the amenities, 2BHK and 3BHK flats here never stay vacant for long, making it a favorite for investors.</li>" +
+      "</ul>" +
+      "<h3>The Cons: The Challenges of 2026</h3>" +
+      "<ul>" +
+      "<li><strong>Traffic Congestion:</strong> During peak evening hours, the entry from the Chandigarh-Ambala highway can be slow. If you work a 9-to-5 in Chandigarh, factor in an extra 15 minutes for this stretch.</li>" +
+      "<li><strong>Noise Levels:</strong> Being a 'High Street' area, the front-facing towers in many societies can experience noise from the bustling commercial activity.</li>" +
+      "</ul>" +
+      "<h3>The PropertyBulbul Verdict</h3>" +
+      "<p>VIP Road is perfect for young couples and families who value convenience and a 'city vibe'. However, if you seek pin-drop silence and open vistas, you might want to explore the newer projects on <strong>PR7 Airport Road</strong>. Check out our comparative maps to decide which Zirakpur pocket suits your lifestyle.</p>",
+    createdAt: "2026-04-25T16:30:00Z",
+  },
+  {
+    title:
+      "Is Your Flat Legal? How to Verify RERA and NOCs in Punjab & Haryana",
+    slug: "verify-property-legality-punjab-haryana-rera-guide",
+    category: "Buyer Guides",
+    targetSector: "Tricity",
+    coverImage:
+      "https://images.unsplash.com/photo-1589829545856-d10d557cf95f?q=80&w=1200",
+    excerpt:
+      "Don't let your dream home become a legal nightmare. Learn how to verify RERA Punjab numbers and check for essential NOCs online before you pay.",
+    content:
+      "<h2>The 'Safety-First' Approach to Buying</h2>" +
+      "<p>In the rapidly growing markets of Mohali and Zirakpur, the excitement of a new home can sometimes overshadow legal due diligence. At <strong>PropertyBulbul</strong>, we believe a 'Verified' listing is the only listing you should consider.</p>" +
+      "<h3>Step-by-Step: Checking RERA Punjab Online</h3>" +
+      "<p>Before booking any flat, follow these steps on the official <em>RERA Punjab</em> portal:</p>" +
+      "<ul>" +
+      "<li><strong>Search the Project:</strong> Visit <a href='https://rera.punjab.gov.in/'>rera.punjab.gov.in</a> and use the 'Search Registered Projects' tab.</li>" +
+      "<li><strong>Compare the Data:</strong> Check if the 'Proposed Date of Completion' on the portal matches what the builder's brochure claims.</li>" +
+      "<li><strong>Verify Quarterly Updates:</strong> Real estate law requires builders to upload quarterly progress reports. If a builder hasn't updated their status in 6 months, it's a red flag.</li>" +
+      "</ul>" +
+      "<h3>Essential NOCs for Tricity Projects</h3>" +
+      "<p>A RERA number is vital, but you should also ask for copies of these 3 critical No Objection Certificates:</p>" +
+      "<ul>" +
+      "<li><strong>Fire Safety NOC:</strong> Mandatory for all high-rise projects in Zirakpur and Mohali.</li>" +
+      "<li><strong>Environmental Clearance:</strong> Critical for large townships (over 20,000 sq. meters) to ensure legal water and sewage connections.</li>" +
+      "<li><strong>Airport Authority Clearance:</strong> Since many projects are near the Mohali International Airport, height clearances are strictly regulated.</li>" +
+      "</ul>" +
+      "<h3>The Bulbul Advantage</h3>" +
+      "<p>We prioritize transparency. Our platform encourages brokers to upload RERA numbers directly, so you can verify the legality of your future home with a single click. Browse our 'Bulbul Verified' section for peace of mind.</p>",
+    createdAt: "2026-04-25T16:00:00Z",
+  },
+  {
+    title: "Student Housing Guide: Finding the Best 1BHK & PGs Near PU Gate 2",
+    slug: "student-housing-guide-chandigarh-sector-25-pu",
+    category: "Renting",
+    targetSector: "Sector 25",
+    coverImage:
+      "https://images.unsplash.com/photo-1554995207-c18c203602cb?q=80&w=1200",
+    excerpt:
+      "Searching for affordable housing near Panjab University? Explore the best pockets in Sector 25 and 15 for students, including rent trends and proximity tips.",
+    content:
+      "<h2>The Student Housing Search in Chandigarh</h2>" +
+      "<p>For students at Panjab University (PU), location is everything. Finding a place that balances proximity to the library with a student-friendly budget can be a challenge. <strong>Sector 25</strong> has emerged as the most practical alternative to the high-priced Sector 15.</p>" +
+      "<h3>Why Sector 25 is Ideal for Students</h3>" +
+      "<ul>" +
+      "<li><strong>Proximity:</strong> Located right across from PU Gate 2 and the Dental College (UIAMS), it cuts commute time to zero.</li>" +
+      "<li><strong>Rent Trends:</strong> While a 1BHK in Sector 15 can cost upwards of ₹15,000, similar accommodations in Sector 25 are available between ₹9,000 and ₹12,000.</li>" +
+      "<li><strong>Amenities:</strong> The sector features dedicated local markets that cater specifically to student needs, from stationary shops to affordable tiffin services.</li>" +
+      "</ul>" +
+      "<h3>What to Check Before Moving In</h3>" +
+      "<p>Before freezing a deal, students should verify if the rent includes water and electricity charges. Most 1BHKs in this area are semi-furnished, providing basic wardrobes and kitchen shelves.</p>" +
+      "<p>At <strong>PropertyBulbul</strong>, we focus on verified listings near the university belt to help students find 'Direct Owner' deals, saving you from heavy brokerage fees.</p>",
+    createdAt: "2026-04-25T15:30:00Z",
+  },
+  {
     title: "Why Sector 115 is Mohali’s Hottest Investment Hub in 2026",
     slug: "sector-115-mohali-investment-guide-2026",
     category: "Market Insights",
