@@ -28,7 +28,7 @@ const initializeGemini = () => {
 export const getGeminiModel = () => {
   const genAI = initializeGemini();
   return genAI.getGenerativeModel({
-    model: "gemini-2.0-flash",
+    model: "gemini-2.5-flash",
     generationConfig: {
       temperature: 0.4, // Stable + professional output
       maxOutputTokens: 1024, // Enough for long descriptions
