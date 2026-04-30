@@ -67,3 +67,38 @@ export async function generateWithGemini(prompt) {
     throw new Error("AI service temporarily unavailable");
   }
 }
+
+/**
+ * Strict JSON output for structured extraction (magic fill).
+ */
+export async function generateJsonWithGemini(prompt) {
+  try {
+    const genAI = initializeGemini();
+    const geminiModel = genAI.getGenerativeModel({
+      model: "gemini-2.5-flash",
+      generationConfig: {
+        temperature: 0.15,
+        maxOutputTokens: 8192,
+        responseMimeType: "application/json",
+      },
+      safetySettings: [
+        { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
+        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+      ],
+    });
+    const result = await geminiModel.generateContent(prompt);
+    if (!result?.response) {
+      throw new Error("No response received from Gemini API");
+    }
+    const responseText = result.response.text();
+    if (!responseText?.trim()) {
+      throw new Error("Empty JSON response from Gemini API");
+    }
+    return responseText.trim();
+  } catch (error) {
+    console.error("❌ Gemini JSON Error:", error.message);
+    throw new Error("AI service temporarily unavailable");
+  }
+}

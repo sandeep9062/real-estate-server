@@ -15,6 +15,7 @@ import {
 import User from "../models/User.js";
 import crypto from "crypto";
 import { sendForgotPasswordEmail } from "../utils/send-email.js";
+import { notifyPasswordChangedEmail } from "../utils/transactionalEmails.js";
 
 /**
  * Get client metadata from request
@@ -161,43 +162,61 @@ export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
-      return res
-        .status(400)
-        .json({ message: "Current password and new password are required" });
+    if (!newPassword || typeof newPassword !== "string") {
+      return res.status(400).json({
+        success: false,
+        message: "New password is required",
+      });
     }
 
     if (newPassword.length < 8) {
-      return res
-        .status(400)
-        .json({ message: "New password must be at least 8 characters long" });
+      return res.status(400).json({
+        success: false,
+        message: "New password must be at least 8 characters long",
+      });
     }
 
-    // Get user from database (attached by auth middleware)
     const user = await User.findById(req.user._id).select("+password");
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({
+        success: false,
+        message: "User not found",
+      });
     }
 
-    // Verify current password
-    if (user.password) {
+    const hasPassword = Boolean(user.password);
+
+    if (hasPassword) {
+      if (!currentPassword) {
+        return res.status(400).json({
+          success: false,
+          message: "Current password is required",
+        });
+      }
       const isMatch = await user.matchPassword(currentPassword);
       if (!isMatch) {
-        return res
-          .status(400)
-          .json({ message: "Current password is incorrect" });
+        return res.status(400).json({
+          success: false,
+          message: "Current password is incorrect",
+        });
       }
     }
 
-    // Update password
     user.password = newPassword;
     await user.save();
 
-    res.status(200).json({ message: "Password changed successfully" });
+    res.status(200).json({
+      success: true,
+      message: "Password changed successfully",
+    });
   } catch (error) {
     console.error("Change password error:", error);
-    res.status(500).json({ message: "Server error", error: error.message });
+    res.status(500).json({
+      success: false,
+      message: "Server error",
+      error: error.message,
+    });
   }
 };
 
@@ -293,7 +312,11 @@ export const forgotPassword = async (req, res) => {
 
     // Send email
     try {
-      await sendForgotPasswordEmail(user.email, resetUrl, user.name);
+      await sendForgotPasswordEmail({
+        to: user.email,
+        userName: user.name || "there",
+        resetLink: resetUrl,
+      });
 
       res.status(200).json({
         success: true,
@@ -302,8 +325,8 @@ export const forgotPassword = async (req, res) => {
       });
     } catch (emailError) {
       console.error("Error sending email:", emailError);
-      user.resetPasswordToken = undefined;
-      user.resetPasswordExpire = undefined;
+      user.resetPasswordToken = null;
+      user.resetPasswordExpire = null;
       await user.save();
 
       return res.status(500).json({
@@ -363,14 +386,19 @@ export const resetPassword = async (req, res) => {
 
     // Set new password
     user.password = password;
-    user.resetPasswordToken = undefined;
-    user.resetPasswordExpire = undefined;
+    user.resetPasswordToken = null;
+    user.resetPasswordExpire = null;
 
     // Clear all refresh tokens (force re-login on all devices)
     user.refreshTokens = [];
     user.tokenVersion += 1;
 
     await user.save();
+
+    notifyPasswordChangedEmail({
+      to: user.email,
+      userName: user.name || "there",
+    }).catch((err) => console.warn("Password-changed email skipped:", err.message));
 
     res.status(200).json({
       success: true,

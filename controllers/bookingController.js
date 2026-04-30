@@ -1,6 +1,7 @@
 import Booking from '../models/Booking.js';
 import User from '../models/User.js';
 import { createNotification } from './notificationController.js';
+import { notifyBookingStatusEmail } from '../utils/transactionalEmails.js';
 
 // @desc    Get all bookings
 // @route   GET /api/bookings
@@ -119,6 +120,17 @@ const updateBookingStatus = async (req, res) => {
         console.error('Error creating notification:', notificationError);
         // Don't fail the booking update if notification creation fails
       }
+
+      const visitDateStr = new Date(booking.date).toLocaleDateString();
+      notifyBookingStatusEmail({
+        userEmail: booking.user.email,
+        userName: booking.user.name,
+        propertyTitle: booking.property.title,
+        status: booking.status,
+        visitDateStr,
+      }).catch((err) =>
+        console.warn('Booking status email skipped:', err.message),
+      );
     }
 
     res.json({ message: "Booking status updated successfully", booking });

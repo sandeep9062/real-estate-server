@@ -7,6 +7,7 @@ import cookieParser from "cookie-parser";
 import cron from "node-cron";
 import PingLog from "./models/PingLog.js";
 import Property from "./models/Property.js";
+import { processSavedSearchAlerts } from "./utils/processSavedSearchAlerts.js";
 import authRoutes from "./auth/auth.routes.js";
 import authLegacyRoutes from "./routes/authRoutes.js";
 import siteSettingsRoutes from "./routes/siteSettingsRoutes.js";
@@ -22,11 +23,12 @@ import notificationRoutes from "./routes/notificationRoutes.js";
 import aiRoutes from "./routes/aiRoutes.js";
 import subscriptionRouter from "./routes/subscription.routes.js";
 import workflowRouter from "./routes/workflow.routes.js";
+import savedSearchRoutes from "./routes/savedSearchRoutes.js";
+import visitReviewRoutes from "./routes/visitReviewRoutes.js";
 
 import developerRoutes from "./routes/developerRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import journalRoutes from "./routes/journalRoutes.js";
-
 import seedRoute from "./routes/seeder.js";
 //import migrationRoutes from "./routes/migration.js";
 
@@ -93,6 +95,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/auth", authLegacyRoutes); // Legacy routes for forgot-password, reset-password, profile, change-password
 app.use("/api/v1/enquiry", enquiryRoutes);
 app.use("/api/properties", propertyRoutes);
+app.use("/api/saved-searches", savedSearchRoutes);
+app.use("/api/visit-reviews", visitReviewRoutes);
 app.use("/api/v1/journals", journalRoutes);
 app.use("/api/v1/contacts", contactRoutes);
 app.use("/api/bookings", bookingRoutes);
@@ -264,4 +268,18 @@ app.listen(PORT, () => {
   });
 
   console.log(`⏰ Ping cron job scheduled to run every 2 minutes`);
+
+  cron.schedule("*/15 * * * *", async () => {
+    try {
+      const r = await processSavedSearchAlerts();
+      if (r.notified > 0) {
+        console.log(
+          `🔔 Saved search alerts: ${r.notified} notification batch(es); ${r.processed} searches checked`,
+        );
+      }
+    } catch (err) {
+      console.error("❌ Saved search alerts failed:", err.message);
+    }
+  });
+  console.log(`⏰ Saved-search alert job scheduled every 15 minutes`);
 });

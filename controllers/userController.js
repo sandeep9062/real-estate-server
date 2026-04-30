@@ -1,7 +1,12 @@
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
 import { createNotification } from "./notificationController.js";
+import {
+  notifyBookingCreatedEmails,
+  notifyVisitCancelledEmails,
+} from "../utils/transactionalEmails.js";
 import mongoose from "mongoose";
+import { transformPropertyCoordinates } from "../utils/propertyFilter.js";
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -313,6 +318,19 @@ export const bookVisit = async (req, res) => {
       console.error("Error creating admin notifications:", notificationError);
     }
 
+    const visitDateStr = new Date(date).toLocaleDateString();
+    notifyBookingCreatedEmails({
+      visitorEmail: user.email,
+      visitorName: user.name,
+      visitorUserId: user._id.toString(),
+      visitDateStr,
+      propertyTitle: property.title,
+      bookingId: newBooking._id.toString(),
+      ownerUserId: property.user?.toString?.(),
+    }).catch((err) =>
+      console.warn("Booking notification emails skipped:", err.message),
+    );
+
     const populatedUser = await User.findById(req.user._id)
       .populate("bookedVisits")
       .select("-password");
@@ -320,6 +338,27 @@ export const bookVisit = async (req, res) => {
   } catch (error) {
     console.error("Book visit error:", error);
     return res.status(500).json({ message: "Server Error" });
+  }
+};
+
+export const getRecentlyViewed = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .select("recentlyViewedProperties")
+      .populate({
+        path: "recentlyViewedProperties",
+        match: { isActive: true, deletedAt: null },
+      })
+      .lean();
+
+    const list = (user?.recentlyViewedProperties || [])
+      .filter(Boolean)
+      .map((p) => transformPropertyCoordinates({ ...p }));
+
+    res.json(list);
+  } catch (error) {
+    console.error("getRecentlyViewed error:", error);
+    res.status(500).json({ message: "Server Error" });
   }
 };
 
@@ -333,23 +372,36 @@ export const cancelVisit = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Find the booking for this user and property
     const booking = await Booking.findOne({
       user: userId,
       property: propertyId,
-    });
+    }).populate({ path: "property", select: "title user" });
 
     if (!booking) {
       return res.status(404).json({ message: "Booking not found" });
     }
+
+    const visitDateStr = new Date(booking.date).toLocaleDateString();
+    const propertyTitle = booking.property?.title || "Property";
+    const ownerUserId = booking.property?.user?.toString?.();
 
     // Remove the booking reference from user's bookedVisits
     await User.findByIdAndUpdate(userId, {
       $pull: { bookedVisits: booking._id },
     });
 
-    // Delete the booking document
     await booking.deleteOne();
+
+    notifyVisitCancelledEmails({
+      visitorEmail: user.email,
+      visitorName: user.name,
+      visitorUserId: userId.toString(),
+      ownerUserId,
+      propertyTitle,
+      visitDateStr,
+    }).catch((err) =>
+      console.warn("Visit cancellation emails skipped:", err.message),
+    );
 
     // Return the populated user
     const populatedUser = await User.findById(userId)

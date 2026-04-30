@@ -1,6 +1,20 @@
 import jwt from "jsonwebtoken";
 import crypto from "crypto";
 
+/** Supports README-style JWT_SECRET when JWT_ACCESS_SECRET is unset */
+export const getJwtAccessSecret = () => {
+  const secret =
+    process.env.JWT_ACCESS_SECRET ||
+    process.env.JWT_SECRET ||
+    process.env.JWT_ACCESS_KEY;
+  if (!secret) {
+    throw new Error(
+      "JWT is not configured: set JWT_ACCESS_SECRET or JWT_SECRET in the environment",
+    );
+  }
+  return secret;
+};
+
 // Token expiry constants
 const ACCESS_TOKEN_EXPIRY = "15m";
 const REFRESH_TOKEN_EXPIRY = "7d";
@@ -21,7 +35,7 @@ export const generateAccessToken = (user) => {
     tokenVersion: user.tokenVersion,
   };
 
-  return jwt.sign(payload, process.env.JWT_ACCESS_SECRET, {
+  return jwt.sign(payload, getJwtAccessSecret(), {
     expiresIn: ACCESS_TOKEN_EXPIRY,
     issuer: "propertybulbul.com",
     audience: "propertybulbul.com",
@@ -53,7 +67,7 @@ export const hashRefreshToken = (token) => {
  */
 export const verifyAccessToken = (token) => {
   try {
-    return jwt.verify(token, process.env.JWT_ACCESS_SECRET, {
+    return jwt.verify(token, getJwtAccessSecret(), {
       issuer: "propertybulbul.com",
       audience: "propertybulbul.com",
     });

@@ -22,7 +22,7 @@ const notificationSchema = mongoose.Schema(
     },
     category: {
       type: String,
-      enum: ["booking", "property", "payment", "user", "system"],
+      enum: ["booking", "property", "payment", "user", "system", "search"],
       default: "system",
     },
     isRead: {

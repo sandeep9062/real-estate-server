@@ -4,11 +4,56 @@ import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import User from "../models/User.js";
 import Lead from "../models/Lead.js";
+import VisitReview from "../models/VisitReview.js";
 
 import axios from "axios";
+import {
+  buildPropertyFindQuery,
+  transformPropertyCoordinates,
+  escapeRegex,
+} from "../utils/propertyFilter.js";
 
 const PDF_SERVICE_URL =
   process.env.PDF_SERVICE_URL || "https://real-estate-pdf-service.onrender.com";
+
+function parseMaybeJson(value) {
+  if (value == null || value === "") return undefined;
+  if (typeof value !== "string") return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+const LISTING_AVAIL = ["Available", "Fresh", "Under offer", "Booked"];
+const OC_STATUS = ["Available", "Applied", "Not issued", "NA"];
+
+function parseOptionalNumber(v) {
+  if (v === undefined || v === null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function getUploadedImagesAndFloorPlans(req) {
+  const f = req.files;
+  if (!f) return { images: [], floorPlans: [] };
+  if (Array.isArray(f)) {
+    return { images: f.map((file) => file.path), floorPlans: [] };
+  }
+  const imgs = f.image || [];
+  const fps = f.floorPlan || [];
+  return {
+    images: imgs.map((file) => file.path),
+    floorPlans: fps.map((file) => file.path),
+  };
+}
+
+function coerceBool(v) {
+  if (v === true || v === "true") return true;
+  if (v === false || v === "false") return false;
+  return undefined;
+}
 
 /**
  * @desc    Generate and stream property brochure PDF
@@ -27,7 +72,7 @@ export const getPropertyBrochure = asyncHandler(async (req, res) => {
 
   const propertyForPDF = {
     ...property,
-    image: property.image?.slice(0, 3) || [],
+    image: property.image?.slice(0, 5) || [],
   };
 
   // Use native fetch instead of axios — no arraybuffer conversion issues
@@ -87,9 +132,24 @@ const createProperty = asyncHandler(async (req, res) => {
     commercialPropertyTypes,
     investmentOptions,
     facilities,
+    listingAvailability,
+    virtualTourUrl,
+    floorPlanImages: rawFloorPlans,
+    nearbyPlaces: rawNearby,
+    reraNumber,
+    maintenanceCharge,
+    securityDeposit,
+    lockInMonths,
+    noticePeriodDays,
+    amenities: rawAmenities,
+    ocStatus,
+    ageOfProperty,
+    pricePerSqft,
+    negotiable: rawNegotiable,
+    videoUrl,
   } = req.body;
 
-  const images = req.files ? req.files.map((file) => file.path) : [];
+  const images = getUploadedImagesAndFloorPlans(req).images;
 
   // Log the received data for debugging
   //  console.log("Received property data:", {
@@ -121,6 +181,20 @@ const createProperty = asyncHandler(async (req, res) => {
     };
   }
 
+  const uploadedFloorPlans = getUploadedImagesAndFloorPlans(req).floorPlans;
+  const floorPlanParsed = parseMaybeJson(rawFloorPlans);
+  const floorPlanFromBody = Array.isArray(floorPlanParsed)
+    ? floorPlanParsed.filter((x) => typeof x === "string")
+    : [];
+  const floorPlanImages = [...floorPlanFromBody, ...uploadedFloorPlans];
+  const nearbyParsed = parseMaybeJson(rawNearby);
+  const amenitiesParsed = parseMaybeJson(rawAmenities);
+  const amenities =
+    Array.isArray(amenitiesParsed)
+      ? amenitiesParsed.filter((x) => typeof x === "string")
+      : undefined;
+  const negotiableVal = coerceBool(rawNegotiable);
+
   const property = new Property({
     title,
     description,
@@ -140,6 +214,36 @@ const createProperty = asyncHandler(async (req, res) => {
     facilities:
       typeof facilities === "string" ? JSON.parse(facilities) : facilities,
     user: req.user._id,
+    listingAvailability:
+      listingAvailability && LISTING_AVAIL.includes(listingAvailability)
+        ? listingAvailability
+        : "Available",
+    virtualTourUrl: virtualTourUrl || undefined,
+    floorPlanImages,
+    nearbyPlaces:
+      nearbyParsed && typeof nearbyParsed === "object"
+        ? nearbyParsed
+        : undefined,
+    reraNumber:
+      reraNumber != null && String(reraNumber).trim()
+        ? String(reraNumber).trim()
+        : undefined,
+    maintenanceCharge: parseOptionalNumber(maintenanceCharge),
+    securityDeposit: parseOptionalNumber(securityDeposit),
+    lockInMonths: parseOptionalNumber(lockInMonths),
+    noticePeriodDays: parseOptionalNumber(noticePeriodDays),
+    amenities,
+    ocStatus:
+      ocStatus && OC_STATUS.includes(String(ocStatus))
+        ? String(ocStatus)
+        : undefined,
+    ageOfProperty: parseOptionalNumber(ageOfProperty),
+    pricePerSqft: parseOptionalNumber(pricePerSqft),
+    negotiable: negotiableVal !== undefined ? negotiableVal : true,
+    videoUrl:
+      videoUrl != null && String(videoUrl).trim()
+        ? String(videoUrl).trim()
+        : undefined,
   });
 
   const createdProperty = await property.save();
@@ -161,83 +265,133 @@ const createProperty = asyncHandler(async (req, res) => {
 // @route   GET /api/properties
 // @access  Public
 const getProperties = asyncHandler(async (req, res) => {
-  // console.log(req.query);
-  const {
-    search,
-    deal,
-    type,
-    priceMin,
-    priceMax,
-    areaMin,
-    availability,
-    areaMax,
-    furnishing,
-    postedBy,
-    propertyCategory,
-    bedrooms,
-    city,
-  } = req.query;
-  const query = { isActive: true, deletedAt: null };
-
-  if (search) {
-    query.$or = [
-      { "location.state": { $regex: search, $options: "i" } },
-      { "location.address": { $regex: search, $options: "i" } },
-      { "location.city": { $regex: search, $options: "i" } }, //change
-      { description: { $regex: search, $options: "i" } }, //change
-      { title: { $regex: search, $options: "i" } },
-    ];
-  }
-
-  if (city) {
-    query["location.city"] = { $regex: `^${city}$`, $options: "i" };
-  }
-
-  if (availability) query.availability = availability;
-  if (deal) query.deal = deal;
-  if (type) query.type = type;
-  if (furnishing) query.furnishing = furnishing;
-  if (postedBy) query.postedBy = postedBy;
-  if (propertyCategory) query.propertyCategory = propertyCategory;
-  if (bedrooms) {
-    if (bedrooms === "5+") {
-      query["facilities.bedrooms"] = { $gte: 5 };
-    } else {
-      query["facilities.bedrooms"] = Number(bedrooms);
-    }
-  }
-  if (req.query.projectId) {
-    query.projectId = req.query.projectId;
-  }
-  if (priceMin || priceMax) {
-    query.price = {};
-    if (priceMin) query.price.$gte = Number(priceMin);
-    if (priceMax) query.price.$lte = Number(priceMax);
-  }
-  if (areaMin || areaMax) {
-    query["area.value"] = {};
-    if (areaMin) query["area.value"].$gte = Number(areaMin);
-    if (areaMax) query["area.value"].$lte = Number(areaMax);
-  }
+  const query = buildPropertyFindQuery(req.query);
 
   const properties = await Property.find(query)
     .populate("user", "name email phone")
     .sort({ createdAt: -1 });
-  // sort to get latest listed properties at top
+
   const transformedProperties = properties.map((property) => {
     const propertyObj = property.toObject();
-    if (
-      propertyObj.location &&
-      propertyObj.location.coordinates &&
-      propertyObj.location.coordinates.coordinates
-    ) {
-      const [lng, lat] = propertyObj.location.coordinates.coordinates;
-      propertyObj.location.coordinates = { lat, lng };
-    }
-    return propertyObj;
+    return transformPropertyCoordinates(propertyObj);
   });
 
   res.json(transformedProperties);
+});
+
+const getCompareProperties = asyncHandler(async (req, res) => {
+  const raw = req.query.ids;
+  if (!raw) {
+    return res.status(400).json({ message: "ids query required" });
+  }
+  const ids = String(raw)
+    .split(",")
+    .map((s) => s.trim())
+    .filter((id) => mongoose.Types.ObjectId.isValid(id))
+    .slice(0, 5);
+
+  if (!ids.length) {
+    return res.status(400).json({ message: "No valid ids" });
+  }
+
+  const properties = await Property.find({
+    _id: { $in: ids },
+    isActive: true,
+    deletedAt: null,
+  }).populate("user", "name email phone");
+
+  const map = new Map(
+    properties.map((p) => [p._id.toString(), transformPropertyCoordinates(p.toObject())]),
+  );
+  const ordered = ids.map((id) => map.get(id)).filter(Boolean);
+  res.json(ordered);
+});
+
+const getSimilarProperties = asyncHandler(async (req, res) => {
+  const propertyId = req.query.propertyId;
+  const limit = Math.min(Number(req.query.limit) || 8, 20);
+
+  if (!propertyId || !mongoose.Types.ObjectId.isValid(propertyId)) {
+    return res.status(400).json({ message: "propertyId required" });
+  }
+
+  const property = await Property.findOne({
+    _id: propertyId,
+    isActive: true,
+    deletedAt: null,
+  }).lean();
+
+  if (!property) {
+    res.status(404);
+    throw new Error("Property not found");
+  }
+
+  const city = property.location?.city;
+  const bedrooms = property.facilities?.bedrooms;
+  const price = property.price || 0;
+  const low = Math.max(0, Math.floor(price * 0.85));
+  const high = Math.ceil(price * 1.15);
+
+  const query = {
+    isActive: true,
+    deletedAt: null,
+    _id: { $ne: property._id },
+    price: { $gte: low, $lte: high },
+  };
+
+  if (city) {
+    query["location.city"] = {
+      $regex: `^${escapeRegex(city)}$`,
+      $options: "i",
+    };
+  }
+  if (bedrooms != null && Number(bedrooms) > 0) {
+    query["facilities.bedrooms"] = Number(bedrooms);
+  }
+
+  const list = await Property.find(query)
+    .populate("user", "name email phone")
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .lean();
+
+  const transformed = list.map((p) => transformPropertyCoordinates({ ...p }));
+  res.json(transformed);
+});
+
+const recordPropertyView = asyncHandler(async (req, res) => {
+  if (!req.user) {
+    return res.status(204).send();
+  }
+
+  const id = req.params.id;
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    return res.status(400).json({ message: "Invalid property id" });
+  }
+
+  const exists = await Property.exists({
+    _id: id,
+    isActive: true,
+    deletedAt: null,
+  });
+  if (!exists) {
+    return res.status(404).json({ message: "Property not found" });
+  }
+
+  await User.findByIdAndUpdate(req.user._id, {
+    $pull: { recentlyViewedProperties: id },
+  });
+  await User.findByIdAndUpdate(req.user._id, {
+    $push: {
+      recentlyViewedProperties: {
+        $each: [id],
+        $position: 0,
+        $slice: 30,
+      },
+    },
+  });
+
+  res.json({ success: true });
 });
 
 // @desc    Get single property
@@ -251,15 +405,7 @@ const getPropertyById = asyncHandler(async (req, res) => {
   }).populate("user", "name email phone");
 
   if (property) {
-    const propertyObj = property.toObject();
-    if (
-      propertyObj.location &&
-      propertyObj.location.coordinates &&
-      propertyObj.location.coordinates.coordinates
-    ) {
-      const [lng, lat] = propertyObj.location.coordinates.coordinates;
-      propertyObj.location.coordinates = { lat, lng };
-    }
+    const propertyObj = transformPropertyCoordinates(property.toObject());
     res.json(propertyObj);
   } else {
     res.status(404);
@@ -278,7 +424,9 @@ const updateProperty = asyncHandler(async (req, res) => {
     throw new Error("Property not found");
   }
 
-  if (property.user.toString() !== req.user._id.toString()) {
+  const isAdmin = req.user.role === "admin";
+  const isOwner = property.user.toString() === req.user._id.toString();
+  if (!isOwner && !isAdmin) {
     res.status(401);
     throw new Error("User not authorized");
   }
@@ -301,9 +449,28 @@ const updateProperty = asyncHandler(async (req, res) => {
     facilities,
     existingImages,
     isActive,
+    listingAvailability,
+    virtualTourUrl,
+    floorPlanImages: rawFloorPlans,
+    nearbyPlaces: rawNearby,
+    bulbulVerified,
+    ownerVerified,
+    visitVerified,
+    reraNumber: bodyReraNumber,
+    maintenanceCharge,
+    securityDeposit,
+    lockInMonths,
+    noticePeriodDays,
+    amenities: rawAmenities,
+    ocStatus,
+    ageOfProperty,
+    pricePerSqft,
+    negotiable: rawNegotiable,
+    videoUrl,
   } = req.body;
 
-  const newImages = req.files ? req.files.map((file) => file.path) : [];
+  const { images: newImages, floorPlans: newFloorPlans } =
+    getUploadedImagesAndFloorPlans(req);
   const images = existingImages
     ? [...JSON.parse(existingImages), ...newImages]
     : property.image;
@@ -340,6 +507,88 @@ const updateProperty = asyncHandler(async (req, res) => {
     property.facilities;
   property.image = images;
   property.isActive = isActive === undefined ? property.isActive : isActive;
+
+  if (listingAvailability && LISTING_AVAIL.includes(listingAvailability)) {
+    property.listingAvailability = listingAvailability;
+  }
+  if (virtualTourUrl !== undefined) {
+    property.virtualTourUrl = virtualTourUrl || "";
+  }
+  const fpParsed = parseMaybeJson(rawFloorPlans);
+  if (Array.isArray(fpParsed)) {
+    property.floorPlanImages = [
+      ...fpParsed.filter((x) => typeof x === "string"),
+      ...newFloorPlans,
+    ];
+  } else if (newFloorPlans.length > 0) {
+    property.floorPlanImages = [
+      ...(property.floorPlanImages || []).filter((x) => typeof x === "string"),
+      ...newFloorPlans,
+    ];
+  }
+  const npParsed = parseMaybeJson(rawNearby);
+  if (npParsed && typeof npParsed === "object") {
+    property.nearbyPlaces = npParsed;
+  }
+
+  if (bodyReraNumber !== undefined) {
+    property.reraNumber = bodyReraNumber
+      ? String(bodyReraNumber).trim()
+      : "";
+  }
+
+  if (isAdmin) {
+    const bb = coerceBool(bulbulVerified);
+    if (bb !== undefined) property.bulbulVerified = bb;
+    const ob = coerceBool(ownerVerified);
+    if (ob !== undefined) property.ownerVerified = ob;
+    const vb = coerceBool(visitVerified);
+    if (vb !== undefined) property.visitVerified = vb;
+  }
+
+  if (maintenanceCharge !== undefined && maintenanceCharge !== "") {
+    const m = parseOptionalNumber(maintenanceCharge);
+    if (m !== undefined) property.maintenanceCharge = m;
+  }
+  if (securityDeposit !== undefined && securityDeposit !== "") {
+    const s = parseOptionalNumber(securityDeposit);
+    if (s !== undefined) property.securityDeposit = s;
+  }
+  if (lockInMonths !== undefined && lockInMonths !== "") {
+    const l = parseOptionalNumber(lockInMonths);
+    if (l !== undefined) property.lockInMonths = l;
+  }
+  if (noticePeriodDays !== undefined && noticePeriodDays !== "") {
+    const n = parseOptionalNumber(noticePeriodDays);
+    if (n !== undefined) property.noticePeriodDays = n;
+  }
+  if (ageOfProperty !== undefined && ageOfProperty !== "") {
+    const a = parseOptionalNumber(ageOfProperty);
+    if (a !== undefined) property.ageOfProperty = a;
+  }
+  if (pricePerSqft !== undefined && pricePerSqft !== "") {
+    const p = parseOptionalNumber(pricePerSqft);
+    if (p !== undefined) property.pricePerSqft = p;
+  }
+  if (rawNegotiable !== undefined && rawNegotiable !== "") {
+    const neg = coerceBool(rawNegotiable);
+    if (neg !== undefined) property.negotiable = neg;
+  }
+  if (ocStatus !== undefined) {
+    property.ocStatus =
+      ocStatus && OC_STATUS.includes(String(ocStatus))
+        ? String(ocStatus)
+        : undefined;
+  }
+  if (rawAmenities !== undefined) {
+    const am = parseMaybeJson(rawAmenities);
+    property.amenities = Array.isArray(am)
+      ? am.filter((x) => typeof x === "string")
+      : property.amenities;
+  }
+  if (videoUrl !== undefined) {
+    property.videoUrl = videoUrl ? String(videoUrl).trim() : "";
+  }
 
   const updatedProperty = await property.save();
   res.json(updatedProperty);
@@ -385,6 +634,8 @@ const deleteProperty = asyncHandler(async (req, res) => {
     const bookingIds = bookings.map((b) => b._id);
 
     await Booking.deleteMany({ property: property._id }, { session });
+
+    await VisitReview.deleteMany({ property: property._id }, { session });
 
     // 3️⃣ Remove deleted bookings from users' bookedVisits
     if (bookingIds.length) {
@@ -515,4 +766,7 @@ export {
   deleteProperty,
   getOwnedProperties,
   createWhatsAppLead,
+  getCompareProperties,
+  getSimilarProperties,
+  recordPropertyView,
 };

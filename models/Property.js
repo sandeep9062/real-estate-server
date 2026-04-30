@@ -1,21 +1,20 @@
 import mongoose from "mongoose";
 
-// location subSchema (for map + radius search later)
+/**
+ * Location: GeoJSON Point is [lng, lat].
+ * `slug`: optional URL key; sparse unique avoids duplicate-key errors when unset.
+ */
 const locationSchema = new mongoose.Schema({
-  address: { type: String, required: true },
-  city: { type: String, index: true },
-  sector: { type: String, index: true },
-  state: { type: String, index: true },
-  country: {
-    type: String,
-  },
-
-  slug: { type: String, unique: true },
-
-  pincode: { type: String },
+  address: { type: String, required: true, trim: true },
+  city: { type: String, index: true, trim: true },
+  sector: { type: String, index: true, trim: true },
+  state: { type: String, index: true, trim: true },
+  country: { type: String, trim: true },
+  slug: { type: String, unique: true, sparse: true, trim: true },
+  pincode: { type: String, trim: true },
   coordinates: {
     type: { type: String, enum: ["Point"], default: "Point" },
-    coordinates: { type: [Number], default: [0, 0] }, // [lng, lat] order
+    coordinates: { type: [Number], default: [0, 0] },
   },
 });
 
@@ -24,20 +23,19 @@ locationSchema.index({ coordinates: "2dsphere" });
 const propertySchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
-
     description: { type: String, required: true, trim: true },
 
-    // This field will link the property to a builder project if applicable. For landlord listings, it will remain null.
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Project",
-      default: null, // Landlord properties not in a society stay null
+      default: null,
     },
     isLandlordProperty: {
       type: Boolean,
       default: true,
     },
 
+    /** Rent = monthly rent; Sale = total asking price (INR). */
     deal: {
       type: String,
       enum: ["Rent", "Sale"],
@@ -53,6 +51,7 @@ const propertySchema = new mongoose.Schema(
       seoTitle: String,
       seoDescription: String,
     },
+
     type: {
       type: String,
       enum: ["Residential", "Commercial", "Industrial", "Agricultural"],
@@ -76,16 +75,19 @@ const propertySchema = new mongoose.Schema(
         "Warehouse",
         "Shop/Showroom",
       ],
+      index: true,
     },
+
     area: {
-      value: { type: Number, min: 1, index: true },
+      value: { type: Number, min: 0, index: true },
       unit: {
         type: String,
         enum: ["sqft", "sqyard", "sqm", "marla", "kanal", "acre"],
       },
     },
+
     ageOfProperty: {
-      type: Number, // in years
+      type: Number,
     },
 
     availability: {
@@ -97,47 +99,61 @@ const propertySchema = new mongoose.Schema(
     availableFrom: Date,
     possessionDate: Date,
 
+    /**
+     * Matches listing UI: Furnished | Semi Furnished | Un-Furnished.
+     * "Fully Furnished" kept for backward compatibility with older documents.
+     */
     furnishing: {
       type: String,
       enum: ["Furnished", "Fully Furnished", "Semi Furnished", "Un-Furnished"],
       default: "Un-Furnished",
     },
+
     facing: {
       type: String,
+      trim: true,
     },
 
     price: { type: Number, min: 0, required: true, index: true },
 
+    /** Monthly — relevant for rent; optional for sale societies. */
     maintenanceCharge: {
-      type: Number, // monthly
+      type: Number,
+      min: 0,
     },
 
+    /** One-time — relevant when deal is Rent. */
     securityDeposit: {
-      type: Number, // for rent
+      type: Number,
+      min: 0,
     },
 
-    //builder project details
+    /** Rent: optional contractual hints (months). */
+    lockInMonths: { type: Number, min: 0 },
+    noticePeriodDays: { type: Number, min: 0 },
 
     projectName: {
       type: String,
       index: true,
+      trim: true,
     },
 
     builderName: {
       type: String,
       index: true,
+      trim: true,
     },
 
     totalUnits: Number,
 
-    societyAmenities: [
-      {
-        type: String,
-      },
-    ],
+    societyAmenities: [{ type: String, trim: true }],
+
+    /** Generic checklist (lift, gym, etc.) — overlaps societyAmenities; both supported. */
+    amenities: [{ type: String, trim: true }],
 
     pricePerSqft: {
       type: Number,
+      min: 0,
       index: true,
     },
 
@@ -153,7 +169,7 @@ const propertySchema = new mongoose.Schema(
       index: true,
     },
 
-    contactNumber: [{ type: String }],
+    contactNumber: [{ type: String, trim: true }],
 
     preferredContact: {
       type: String,
@@ -163,8 +179,8 @@ const propertySchema = new mongoose.Schema(
 
     location: locationSchema,
 
-    commercialPropertyTypes: [{ type: String }],
-    investmentOptions: [{ type: String }],
+    commercialPropertyTypes: [{ type: String, trim: true }],
+    investmentOptions: [{ type: String, trim: true }],
 
     ownershipType: {
       type: String,
@@ -172,15 +188,50 @@ const propertySchema = new mongoose.Schema(
     },
 
     approvedBy: {
-      type: String, // GMADA, MC, CHB, etc.
+      type: String,
+      trim: true,
     },
 
     reraNumber: {
       type: String,
       index: true,
+      trim: true,
     },
-    // it will be used to boost the listing in search results and can be a paid feature
-    // currently we are updating it using cron -job every hour ,select 10 properties randomly and mark them as featured for next 24 hours
+
+    /** Sale / UC: occupancy certificate — trust for buyers. */
+    ocStatus: {
+      type: String,
+      enum: ["Available", "Applied", "Not issued", "NA"],
+    },
+
+    listingAvailability: {
+      type: String,
+      enum: ["Available", "Fresh", "Under offer", "Booked"],
+      default: "Available",
+      index: true,
+    },
+
+    bulbulVerified: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+    ownerVerified: {
+      type: Boolean,
+      default: false,
+    },
+    visitVerified: {
+      type: Boolean,
+      default: false,
+    },
+
+    virtualTourUrl: {
+      type: String,
+      trim: true,
+    },
+
+    floorPlanImages: [{ type: String, trim: true }],
+
     isFeatured: {
       type: Boolean,
       default: false,
@@ -189,64 +240,63 @@ const propertySchema = new mongoose.Schema(
 
     featuredUntil: Date,
 
-    /* =====================
-       STATS
-    ====================== */
     views: {
       type: Number,
       default: 0,
+      min: 0,
     },
 
     leads: {
       type: Number,
       default: 0,
+      min: 0,
     },
 
-    // admin controls
     isVerified: { type: Boolean, default: false, index: true },
 
-    isActive: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: true, index: true },
 
-    deletedAt: { type: Date, default: null },
+    deletedAt: { type: Date, default: null, index: true },
 
     adminNotes: {
-      type: String, // internal use only
+      type: String,
+      trim: true,
     },
 
     image: {
       type: [String],
-      required: false, // Temporarily made optional to debug the issue
+      default: [],
     },
-    videoUrl: String,
-    floor: Number,
+
+    videoUrl: { type: String, trim: true },
+
+    floor: { type: Number, min: 0 },
 
     facilities: {
       bedrooms: { type: Number, min: 0, index: true },
-      servantRooms: Number,
-      bathrooms: Number,
-      parkings: Number,
+      servantRooms: { type: Number, min: 0 },
+      bathrooms: { type: Number, min: 0 },
+      parkings: { type: Number, min: 0 },
+      balconies: { type: Number, min: 0 },
+      parkingType: {
+        type: String,
+        enum: ["None", "Open", "Covered", "Both"],
+      },
       securityFeatures: [
         {
           type: String,
           enum: ["CCTV", "Guard", "Biometric", "Gated"],
         },
       ],
-
-      // parking: {
-      //   type: String,
-      //   enum: ["None", "Open", "Covered", "Both"],
-      // },
-
       waterSupply: {
         type: String,
         enum: ["Municipal", "Borewell", "Both"],
       },
-
       powerBackup: {
         type: Boolean,
         default: false,
       },
-      totalFloors: Number,
+      totalFloors: { type: Number, min: 0 },
     },
 
     nearbyPlaces: {
@@ -260,140 +310,24 @@ const propertySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
-    /* =====================
-       STATUS
-    ====================== */
     status: {
       type: String,
       enum: ["Active", "Sold", "Rented", "Inactive", "Review Required"],
       default: "Active",
       index: true,
     },
-
-    // for rent
-
-    //     roomType: {
-    //       type: String,
-    //       enum: ["Private Room", "Shared Room", "PG", "Hostel"],
-    //       index: true,
-    //     },
-
-    //     sharingType: {
-    //       type: String,
-    //       enum: ["Single", "Double", "Triple", "Four Sharing"],
-    //       index: true,
-    //     },
-
-    //     bedsAvailable: {
-    //       type: Number,
-    //     },
-
-    //     preferredTenants: {
-    //       type: String,
-    //       enum: ["Students", "Working Professionals", "Anyone"],
-    // index: true,
-    //     },
-
-    //     genderPreference: {
-    //       type: String,
-    //       enum: ["Male", "Female", "Any"],
-    //       index: true,
-    //     },
-    // rentPerPerson: {
-    //   type: Number,
-    //   index: true,
-    // },
-
-    // electricityChargesIncluded: {
-    //   type: Boolean,
-    //   default: false,
-    // },
-
-    // waterChargesIncluded: {
-    //   type: Boolean,
-    //   default: true,
-    // },
-
-    // wifiIncluded: {
-    //   type: Boolean,
-    //   default: false,
-    // },
-
-    // minimumStayMonths: {
-    //   type: Number,
-    //   default: 1,
-    // },
-
-    // noticePeriodDays: {
-    //   type: Number,
-    //   default: 30,
-    // },
-
-    // nearbyInstitutes: [
-    //   {
-    //     name: String,
-    //     distanceInKm: Number,
-    //   },
-    // ],
-
-    // studentAmenities: [
-    //   {
-    //     type: String,
-    //     enum: [
-    //       "Study Table",
-    //       "Chair",
-    //       "Cupboard",
-    //       "Washing Machine",
-    //       "RO Water",
-    //       "WiFi",
-    //       "CCTV",
-    //       "Biometric Entry",
-    //     ],
-    //   },
-    // ],
-
-    // gateClosingTime: {
-    //   type: String,
-    //   igger,
-    // },
-
-    // visitorAllowed: {
-    //   type: Boolean,
-    //   default: false,
-    // },
-
-    // smokingAllowed: {
-    //   type: Boolean,
-    //   default: false,
-    // },
-
-    // alcoholAllowed: {
-    //   type: Boolean,
-    //   default: false,
-    // },
-
-    // foodAvailable: {
-    //   type: Boolean,
-    //   default: false,
-    // },
-
-    // foodType: {
-    //   type: String,
-    //   enum: ["Veg", "Non-Veg", "Both"],
-    // },
-
-    // mealsIncluded: {
-    //   breakfast: Boolean,
-    //   lunch: Boolean,
-    //   dinner: Boolean,
-    // },
   },
   {
     timestamps: true,
   },
 );
+
+propertySchema.index({ deal: 1, "location.city": 1, isActive: 1, deletedAt: 1 });
+propertySchema.index({ deal: 1, price: 1 });
+propertySchema.index({ type: 1, propertyCategory: 1 });
 
 propertySchema.virtual("id").get(function () {
   return this._id.toHexString();

@@ -101,7 +101,7 @@ export const generateForgotPasswordTemplate = ({ userName, resetLink }) => `
               <td style="vertical-align: top; padding-right: 12px; font-size: 18px;">🛡️</td>
               <td>
                 <p style="margin: 0; font-size: 14px; color: #64748b; line-height: 1.5;">
-                  <strong>Security Alert:</strong> This link will expire in <strong>15 minutes</strong> for your protection. If you did not initiate this request, no further action is required; your account remains secure.
+                  <strong>Security Alert:</strong> This link will expire in <strong>1 hour</strong> for your protection. If you did not initiate this request, no further action is required; your account remains secure.
                 </p>
               </td>
             </tr>
@@ -139,6 +139,133 @@ export const generateForgotPasswordTemplate = ({ userName, resetLink }) => `
   </table>
 </div>
 `;
+
+const pbLayout = (heading, bodyHtml) => `
+<div style="background-color:#f1f5f9;padding:40px 20px;font-family:'Helvetica Neue',Helvetica,Arial,sans-serif;color:#1e293b;">
+  <table align="center" cellpadding="0" cellspacing="0" width="100%" style="max-width:600px;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 4px 6px -1px rgba(0,0,0,.08);">
+    <tr><td style="padding:24px 40px 8px;"><div style="color:#4f46e5;font-size:20px;font-weight:800;">PROPERTY BULBUL</div></td></tr>
+    <tr><td style="padding:8px 40px 28px;">
+      <h1 style="margin:0 0 14px;font-size:20px;color:#0f172a;">${heading}</h1>
+      <div style="font-size:15px;line-height:1.65;color:#475569;">${bodyHtml}</div>
+    </td></tr>
+    <tr><td style="padding:20px 40px;background:#f8fafc;border-top:1px solid #f1f5f9;text-align:center;font-size:12px;color:#94a3b8;">&copy; ${new Date().getFullYear()} Property Bulbul</td></tr>
+  </table>
+</div>`;
+
+export const generateWelcomeEmailHtml = ({ userName, siteUrl }) =>
+  pbLayout(
+    "Welcome aboard",
+    `<p style="margin:0 0 12px;">Hi <strong>${escapeHtml(userName || "there")}</strong>,</p>
+     <p style="margin:0 0 12px;">Thanks for joining Property Bulbul. You can browse listings, save searches, and book property visits anytime.</p>
+     <p style="margin:0;"><a href="${escapeHtml(siteUrl)}" style="color:#4f46e5;font-weight:600;text-decoration:none;">Open the site</a></p>`,
+  );
+
+export const generatePasswordChangedEmailHtml = ({ userName }) =>
+  pbLayout(
+    "Your password was updated",
+    `<p style="margin:0 0 12px;">Hi <strong>${escapeHtml(userName || "there")}</strong>,</p>
+     <p style="margin:0 0 12px;">The password for your Property Bulbul account was just changed. If this was you, no action is needed.</p>
+     <p style="margin:0;">If you did not make this change, please reset your password immediately and contact support.</p>`,
+  );
+
+export const generateContactAdminEmailHtml = ({
+  name,
+  email,
+  phone,
+  subject,
+  message,
+}) =>
+  pbLayout(
+    "New contact form message",
+    `<p style="margin:0 0 8px;"><strong>From:</strong> ${escapeHtml(name)}</p>
+     <p style="margin:0 0 8px;"><strong>Email:</strong> ${escapeHtml(email)}</p>
+     ${phone ? `<p style="margin:0 0 8px;"><strong>Phone:</strong> ${escapeHtml(phone)}</p>` : ""}
+     <p style="margin:0 0 8px;"><strong>Subject:</strong> ${escapeHtml(subject || "(none)")}</p>
+     <p style="margin:16px 0 0;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e2e8f0;white-space:pre-wrap;">${escapeHtml(message || "")}</p>`,
+  );
+
+export const generateContactConfirmationEmailHtml = ({ name }) =>
+  pbLayout(
+    "We received your message",
+    `<p style="margin:0 0 12px;">Hi <strong>${escapeHtml(name || "there")}</strong>,</p>
+     <p style="margin:0 0 12px;">Thank you for contacting Property Bulbul. Our team will get back to you as soon as possible.</p>
+     <p style="margin:0;">This is an automated confirmation — please reply only if you need to add more detail to your enquiry.</p>`,
+  );
+
+export const generateBookingUserConfirmationHtml = ({
+  userName,
+  propertyTitle,
+  visitDate,
+  listingsUrl,
+}) =>
+  pbLayout(
+    "Visit request received",
+    `<p style="margin:0 0 12px;">Hi <strong>${escapeHtml(userName || "there")}</strong>,</p>
+     <p style="margin:0 0 12px;">Your visit for <strong>${escapeHtml(propertyTitle)}</strong> is scheduled for <strong>${escapeHtml(visitDate)}</strong> (pending confirmation).</p>
+     <p style="margin:0;">We'll notify you when the owner or team updates the status. You can also check your bookings in your account.</p>
+     ${listingsUrl ? `<p style="margin:16px 0 0;"><a href="${escapeHtml(listingsUrl)}" style="color:#4f46e5;font-weight:600;text-decoration:none;">View listings</a></p>` : ""}`,
+  );
+
+export const generateBookingOwnerAlertHtml = ({
+  ownerName,
+  visitorName,
+  visitorEmail,
+  propertyTitle,
+  visitDate,
+  dashboardBookingUrl,
+}) =>
+  pbLayout(
+    "New visit booking",
+    `<p style="margin:0 0 12px;">Hi <strong>${escapeHtml(ownerName || "there")}</strong>,</p>
+     <p style="margin:0 0 12px;"><strong>${escapeHtml(visitorName)}</strong>${visitorEmail ? ` (${escapeHtml(visitorEmail)})` : ""} requested a visit for <strong>${escapeHtml(propertyTitle)}</strong> on <strong>${escapeHtml(visitDate)}</strong>.</p>
+     ${dashboardBookingUrl ? `<p style="margin:0;"><a href="${escapeHtml(dashboardBookingUrl)}" style="color:#4f46e5;font-weight:600;text-decoration:none;">Open booking in dashboard</a></p>` : ""}`,
+  );
+
+export const generateBookingStatusEmailHtml = ({
+  userName,
+  propertyTitle,
+  status,
+  visitDate,
+  dashboardUrl,
+}) =>
+  pbLayout(
+    `Booking update: ${escapeHtml(status)}`,
+    `<p style="margin:0 0 12px;">Hi <strong>${escapeHtml(userName || "there")}</strong>,</p>
+     <p style="margin:0 0 12px;">Your visit for <strong>${escapeHtml(propertyTitle)}</strong> on <strong>${escapeHtml(visitDate)}</strong> is now <strong>${escapeHtml(status)}</strong>.</p>
+     ${dashboardUrl ? `<p style="margin:0;"><a href="${escapeHtml(dashboardUrl)}" style="color:#4f46e5;font-weight:600;text-decoration:none;">View your bookings</a></p>` : ""}`,
+  );
+
+export const generateVisitCancelledUserHtml = ({
+  userName,
+  propertyTitle,
+  visitDate,
+}) =>
+  pbLayout(
+    "Visit cancelled",
+    `<p style="margin:0 0 12px;">Hi <strong>${escapeHtml(userName || "there")}</strong>,</p>
+     <p style="margin:0;">Your scheduled visit for <strong>${escapeHtml(propertyTitle)}</strong> on <strong>${escapeHtml(visitDate)}</strong> has been cancelled.</p>`,
+  );
+
+export const generateVisitCancelledOwnerHtml = ({
+  ownerName,
+  visitorName,
+  propertyTitle,
+  visitDate,
+}) =>
+  pbLayout(
+    "A visit was cancelled",
+    `<p style="margin:0 0 12px;">Hi <strong>${escapeHtml(ownerName || "there")}</strong>,</p>
+     <p style="margin:0;"><strong>${escapeHtml(visitorName)}</strong> cancelled their visit for <strong>${escapeHtml(propertyTitle)}</strong> scheduled for <strong>${escapeHtml(visitDate)}</strong>.</p>`,
+  );
+
+function escapeHtml(s) {
+  if (s == null) return "";
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
 
 export const emailTemplates = [
   {

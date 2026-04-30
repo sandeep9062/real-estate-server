@@ -71,6 +71,9 @@ const userSchema = mongoose.Schema(
     },
     bookedVisits: [{ type: mongoose.Schema.Types.ObjectId, ref: "Booking" }],
     favProperties: [{ type: mongoose.Schema.Types.ObjectId, ref: "Property" }],
+    recentlyViewedProperties: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
+    ],
     ownedProperties: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
     ],
@@ -175,12 +178,14 @@ userSchema.statics.findByCredentials = async function (email, password) {
 // Transform output - remove sensitive fields
 userSchema.methods.toJSON = function () {
   const user = this.toObject();
+  const passwordIsSet = Boolean(this.password);
   delete user.password;
   delete user.refreshTokens;
   delete user.resetPasswordToken;
   delete user.resetPasswordExpire;
   delete user.googleId;
   delete user.__v;
+  user.passwordIsSet = passwordIsSet;
   return user;
 };
 

@@ -1,13 +1,19 @@
 import nodemailer from "nodemailer";
 import { generateForgotPasswordTemplate, generateEmailTemplate } from "./email-template.js";
-console.log("AUTH OBJECT:", {
-  user: process.env.EMAIL_USER,
-  pass: process.env.EMAIL_PASS ? "LOADED" : "MISSING",
-});
+
+export function isEmailConfigured() {
+  return Boolean(
+    process.env.EMAIL_USER &&
+      process.env.EMAIL_PASS &&
+      process.env.EMAIL_FROM &&
+      process.env.EMAIL_HOST &&
+      process.env.EMAIL_PORT,
+  );
+}
 
 const sendEmail = async ({ to, subject, html }) => {
   // HARD FAIL if creds missing
-  if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
+  if (!isEmailConfigured()) {
     throw new Error("EMAIL credentials missing at sendEmail()");
   }
 
@@ -88,5 +94,19 @@ export const sendReminderEmail = async ({ to, type, subscription }) => {
 
   return await sendEmail({ to, subject, html });
 };
+
+/** Non-throwing: skips when SMTP is not configured; logs failures without throwing. */
+export async function sendEmailSafe({ to, subject, html }) {
+  if (!isEmailConfigured()) {
+    return false;
+  }
+  try {
+    await sendEmail({ to, subject, html });
+    return true;
+  } catch (e) {
+    console.warn("[sendEmailSafe]", e.message);
+    return false;
+  }
+}
 
 export default sendEmail;

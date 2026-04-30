@@ -8,6 +8,7 @@ import {
   getRefreshTokenExpiry,
 } from "./jwt.utils.js";
 import { createNotification } from "../controllers/notificationController.js";
+import { notifyWelcomeEmail } from "../utils/transactionalEmails.js";
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -64,6 +65,10 @@ export const registerUser = async (userData, userAgent, ipAddress) => {
 
   // Create notification for admins (non-blocking)
   createAdminNotification(user).catch(console.error);
+
+  notifyWelcomeEmail({ to: user.email, userName: user.name }).catch((err) =>
+    console.warn("Welcome email skipped:", err.message),
+  );
 
   return {
     user: user.toJSON(),
@@ -172,6 +177,10 @@ export const googleAuth = async (idToken, userAgent, ipAddress) => {
 
     // Create notification for admins (non-blocking)
     createAdminNotification(user).catch(console.error);
+
+    notifyWelcomeEmail({ to: user.email, userName: user.name }).catch((err) =>
+      console.warn("Welcome email skipped:", err.message),
+    );
   }
 
   // Clean expired tokens

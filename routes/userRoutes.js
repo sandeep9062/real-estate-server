@@ -15,6 +15,7 @@ import {
   userBookings,
   userFavourites,
   userProfile,
+  getRecentlyViewed,
 } from "../controllers/userController.js";
 
 const router = express.Router();
@@ -31,6 +32,8 @@ router.get("/favourites", protect, userFavourites);
 
 // ✅ Get all bookings of a user
 router.get("/bookings", protect, userBookings);
+
+router.get("/recently-viewed", protect, getRecentlyViewed);
 
 // ✅ Get user by ID
 router.get("/:id", getUser);

@@ -1,4 +1,5 @@
 import Contact from "../models/Contact.js";
+import { notifyContactFormEmails } from "../utils/transactionalEmails.js";
 
 // @desc    Create a new contact message
 // @route   POST /api/v1/contact
@@ -16,6 +17,10 @@ export const createContact = async (req, res) => {
     });
 
     await newContact.save();
+
+    notifyContactFormEmails(newContact).catch((err) =>
+      console.warn("Contact form emails skipped:", err.message),
+    );
 
     res.status(201).json({
       success: true,

@@ -2,12 +2,24 @@ import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
 import { Readable } from "stream";
 
-// Configure Cloudinary
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+const hasCloudinaryConfig = Boolean(
+  process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET,
+);
+
+if (hasCloudinaryConfig) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
+
+function sanitizePublicIdPart(name) {
+  const base = (name || "file").split(".")[0];
+  return base.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80) || "file";
+}
 
 // Helper function to upload buffer to Cloudinary
 const uploadToCloudinary = (buffer, options) => {
@@ -22,7 +34,7 @@ const uploadToCloudinary = (buffer, options) => {
         }
       }
     );
-    
+
     const readableStream = new Readable();
     readableStream.push(buffer);
     readableStream.push(null);
@@ -33,23 +45,32 @@ const uploadToCloudinary = (buffer, options) => {
 // Custom storage engine for Cloudinary
 const cloudinaryStorage = {
   _handleFile: async (req, file, cb) => {
+    if (!hasCloudinaryConfig) {
+      return cb(
+        new Error(
+          "Cloudinary is not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET."
+        )
+      );
+    }
     try {
-      const allowedFormats = ["jpg", "jpeg", "png", "mp4", "mov", "avi"];
+      const allowedFormats = ["jpg", "jpeg", "png", "webp", "gif", "mp4", "mov", "avi", "webm"];
       const fileExtension = file.originalname.split(".").pop().toLowerCase();
 
       if (!allowedFormats.includes(fileExtension)) {
         return cb(new Error("Unsupported file type."));
       }
 
-      const isVideo = ["mp4", "mov", "avi"].includes(fileExtension);
+      const isVideo = ["mp4", "mov", "avi", "webm"].includes(fileExtension);
 
       const options = {
-        folder: "RealEstate",
+        folder:
+          file.fieldname === "floorPlan"
+            ? "RealEstate/floor-plans"
+            : "RealEstate/properties",
         resource_type: isVideo ? "video" : "image",
-        public_id: `${Date.now()}-${file.originalname.split(".")[0]}`,
+        public_id: `p_${Date.now()}_${sanitizePublicIdPart(file.originalname)}`,
       };
 
-      // Convert file stream to buffer
       const chunks = [];
       for await (const chunk of file.stream) {
         chunks.push(chunk);
@@ -57,7 +78,7 @@ const cloudinaryStorage = {
       const buffer = Buffer.concat(chunks);
 
       const result = await uploadToCloudinary(buffer, options);
-      
+
       cb(null, {
         path: result.secure_url,
         filename: result.public_id,
@@ -70,17 +91,15 @@ const cloudinaryStorage = {
     }
   },
   _removeFile: (req, file, cb) => {
-    // Remove file from Cloudinary if needed
-    if (file.public_id) {
-      cloudinary.uploader.destroy(file.public_id, (error, result) => {
-        if (error) {
-          console.error("Error removing file from Cloudinary:", error);
-        }
-        cb(null);
-      });
-    } else {
-      cb(null);
+    if (!hasCloudinaryConfig || !file.public_id) {
+      return cb(null);
     }
+    cloudinary.uploader.destroy(file.public_id, (error) => {
+      if (error) {
+        console.error("Error removing file from Cloudinary:", error);
+      }
+      cb(null);
+    });
   },
 };
 
@@ -93,14 +112,17 @@ const upload = multer({
       "image/jpeg",
       "image/png",
       "image/jpg",
+      "image/webp",
+      "image/gif",
       "video/mp4",
       "video/quicktime",
       "video/x-msvideo",
+      "video/webm",
     ];
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Only images and videos are allowed."));
+      cb(new Error("Only images (JPEG, PNG, WebP, GIF) and videos (MP4, MOV, AVI, WebM) are allowed."));
     }
   },
 });
