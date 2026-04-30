@@ -6,6 +6,7 @@ import {
   generateLocalityGuideController,
   generatePropertyDetailsController,
 } from "../controllers/aiController.js";
+
 import { protect } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();

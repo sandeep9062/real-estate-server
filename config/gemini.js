@@ -28,7 +28,7 @@ const initializeGemini = () => {
 export const getGeminiModel = () => {
   const genAI = initializeGemini();
   return genAI.getGenerativeModel({
-    model: "gemini-2.5-flash",
+    model: "gemini-2.0-flash",
     generationConfig: {
       temperature: 0.4, // Stable + professional output
       maxOutputTokens: 1024, // Enough for long descriptions
@@ -84,8 +84,14 @@ export async function generateJsonWithGemini(prompt) {
       safetySettings: [
         { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_NONE" },
         { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_NONE" },
-        { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_NONE" },
+        {
+          category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+          threshold: "BLOCK_NONE",
+        },
+        {
+          category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+          threshold: "BLOCK_NONE",
+        },
       ],
     });
     const result = await geminiModel.generateContent(prompt);
