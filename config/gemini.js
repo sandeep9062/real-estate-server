@@ -75,7 +75,7 @@ export async function generateJsonWithGemini(prompt) {
   try {
     const genAI = initializeGemini();
     const geminiModel = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
+      model: "gemini-3-flash-preview",
       generationConfig: {
         temperature: 0.15,
         maxOutputTokens: 8192,
