@@ -3,7 +3,6 @@ import SavedSearch from "../models/SavedSearch.js";
 import User from "../models/User.js";
 import { createNotification } from "../controllers/notificationController.js";
 import { buildPropertyFindQuery } from "./propertyFilter.js";
-import { isEmailConfigured } from "./send-email.js";
 
 function filtersToQueryStrings(filters) {
   if (!filters || typeof filters !== "object") return {};
@@ -46,10 +45,7 @@ export async function processSavedSearchAlerts() {
       .limit(25)
       .lean();
 
-    await SavedSearch.updateOne(
-      { _id: ss._id },
-      { $set: { cursorAt: now } },
-    );
+    await SavedSearch.updateOne({ _id: ss._id }, { $set: { cursorAt: now } });
 
     if (!matches.length) continue;
 
@@ -80,7 +76,7 @@ export async function processSavedSearchAlerts() {
       });
     }
 
-    if (ss.notifyEmail && user.email && isEmailConfigured()) {
+    if (ss.notifyEmail && user.email) {
       await sendEmail(
         user.email,
         `${matches.length} new listing(s) on PropertyBulbul`,

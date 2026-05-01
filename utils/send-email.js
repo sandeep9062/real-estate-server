@@ -1,53 +1,45 @@
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 import {
   generateForgotPasswordTemplate,
   generateEmailTemplate,
 } from "./email-template.js";
 
-export function isEmailConfigured() {
-  return Boolean(
-    process.env.EMAIL_USER &&
-    process.env.EMAIL_PASS &&
-    process.env.EMAIL_FROM &&
-    process.env.EMAIL_HOST &&
-    process.env.EMAIL_PORT,
-  );
-}
+// Resend initialization
+const resend = new Resend(process.env.RESEND_API_KEY);
+
 const sendEmail = async ({ to, subject, html }) => {
-  if (!isEmailConfigured()) {
-    throw new Error("EMAIL credentials missing at sendEmail()");
+  // Check if API Key exists
+  if (!process.env.RESEND_API_KEY) {
+    throw new Error("RESEND_API_KEY is missing in environment variables");
   }
-  const transporter = nodemailer.createTransport({
-    service: "gmail",
 
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
-    },
-
-    connectionTimeout: 50000, // 50 seconds
-    greetingTimeout: 50000,
-    socketTimeout: 50000,
-  });
   try {
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM,
-      to,
-      subject,
-      html,
+    const { data, error } = await resend.emails.send({
+      // Professional "From" address using your verified domain
+      from: "Property Bulbul <noreply@propertybulbul.com>",
+      to: to,
+      subject: subject,
+      html: html,
+      // User reply karega toh seedha aapke Gmail par aayega
+      reply_to: "bulbulproperty@gmail.com",
     });
+
+    if (error) {
+      console.error("Resend API Error:", error);
+      throw error;
+    }
+
+    console.log("Email sent successfully via Resend API:", data.id);
+    return data;
   } catch (error) {
-    console.error("SMTP Error Details:", error);
+    console.error("Email Service Error:", error.message);
     throw error;
-  } finally {
-    transporter.close(); // Connection close karna zaroori hai Render par space bachane ke liye
   }
 };
-export const sendForgotPasswordEmail = async ({ to, userName, resetLink }) => {
-  const subject =
-    "🔐 Reset Your Password - Property Bulbul (Tricity Real Estate Partner)";
-  const html = generateForgotPasswordTemplate({ userName, resetLink });
 
+export const sendForgotPasswordEmail = async ({ to, userName, resetLink }) => {
+  const subject = "🔐 Reset Your Password - Property Bulbul";
+  const html = generateForgotPasswordTemplate({ userName, resetLink });
   return await sendEmail({ to, subject, html });
 };
 
