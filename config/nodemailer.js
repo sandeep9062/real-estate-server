@@ -1,19 +1,18 @@
 import nodemailer from "nodemailer";
 
 export const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST,
-  port: parseInt(process.env.EMAIL_PORT), // Port 587 as a number
-  secure: false, // TLS ke liye false (Port 465 ke liye true hota hai)
+  host: "smtp.gmail.com",
+  port: 465,
+  secure: true, // Port 465 ke liye true hona chahiye
   auth: {
     user: process.env.EMAIL_USER,
-    pass: process.env.EMAIL_PASS,
+    pass: process.env.EMAIL_PASS, // Naya 16-digit App Password
   },
   // Render connectivity fixes
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
+  connectionTimeout: 15000,
   socketTimeout: 20000,
+  greetingTimeout: 15000,
   tls: {
-    rejectUnauthorized: false,
-    minVersion: "TLSv1.2",
+    rejectUnauthorized: false, // Self-signed certificates allow karne ke liye
   },
 });
