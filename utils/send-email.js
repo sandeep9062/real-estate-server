@@ -1,46 +1,57 @@
 import nodemailer from "nodemailer";
-import { generateForgotPasswordTemplate, generateEmailTemplate } from "./email-template.js";
+import {
+  generateForgotPasswordTemplate,
+  generateEmailTemplate,
+} from "./email-template.js";
 
 export function isEmailConfigured() {
   return Boolean(
     process.env.EMAIL_USER &&
-      process.env.EMAIL_PASS &&
-      process.env.EMAIL_FROM &&
-      process.env.EMAIL_HOST &&
-      process.env.EMAIL_PORT,
+    process.env.EMAIL_PASS &&
+    process.env.EMAIL_FROM &&
+    process.env.EMAIL_HOST &&
+    process.env.EMAIL_PORT,
   );
 }
-
 const sendEmail = async ({ to, subject, html }) => {
-  // HARD FAIL if creds missing
   if (!isEmailConfigured()) {
     throw new Error("EMAIL credentials missing at sendEmail()");
   }
 
-  // CREATE TRANSPORTER INSIDE FUNCTION (IMPORTANT)
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
-    port: Number(process.env.EMAIL_PORT),
-    secure: false, // MUST be false for 587
+    port: Number(process.env.EMAIL_PORT), // 465
+    secure: true, // Port 465 ke liye true hi rehne dein
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
+    // YE SETTINGS ADD KAREIN:
+    connectionTimeout: 20000, // 20 seconds (Render ke liye zaroori hai)
+    greetingTimeout: 20000,
+    socketTimeout: 20000,
+    tls: {
+      rejectUnauthorized: false, // Security handshake failures rokne ke liye
+    },
   });
 
-
-
-  // SEND MAIL
-  await transporter.sendMail({
-    from: process.env.EMAIL_FROM,
-    to,
-    subject,
-    html,
-  });
+  try {
+    await transporter.sendMail({
+      from: process.env.EMAIL_FROM,
+      to,
+      subject,
+      html,
+    });
+  } catch (error) {
+    console.error("SMTP Error Details:", error);
+    throw error;
+  } finally {
+    transporter.close(); // Connection close karna zaroori hai Render par space bachane ke liye
+  }
 };
-
 export const sendForgotPasswordEmail = async ({ to, userName, resetLink }) => {
-  const subject = "🔐 Reset Your Password - Property Bulbul (Tricity Real Estate Partner)";
+  const subject =
+    "🔐 Reset Your Password - Property Bulbul (Tricity Real Estate Partner)";
   const html = generateForgotPasswordTemplate({ userName, resetLink });
 
   return await sendEmail({ to, subject, html });
@@ -52,11 +63,14 @@ export const sendReminderEmail = async ({ to, type, subscription }) => {
   const daysLeft = daysMatch ? parseInt(daysMatch[1]) : 7;
 
   // Format renewal date
-  const renewalDate = new Date(subscription.renewalDate).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
+  const renewalDate = new Date(subscription.renewalDate).toLocaleDateString(
+    "en-US",
+    {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    },
+  );
 
   // Prepare template data
   const templateData = {
@@ -66,8 +80,8 @@ export const sendReminderEmail = async ({ to, type, subscription }) => {
     planName: subscription.name,
     price: `${subscription.currency} ${subscription.price}`,
     paymentMethod: subscription.paymentMethod,
-    accountSettingsLink: '#', // Placeholder - would need actual link
-    supportLink: '#', // Placeholder - would need actual link
+    accountSettingsLink: "#", // Placeholder - would need actual link
+    supportLink: "#", // Placeholder - would need actual link
     daysLeft,
   };
 
