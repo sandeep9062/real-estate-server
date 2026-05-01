@@ -17,24 +17,23 @@ const sendEmail = async ({ to, subject, html }) => {
   if (!isEmailConfigured()) {
     throw new Error("EMAIL credentials missing at sendEmail()");
   }
-
   const transporter = nodemailer.createTransport({
     host: process.env.EMAIL_HOST,
     port: Number(process.env.EMAIL_PORT), // 465
-    secure: true, // Port 465 ke liye true hi rehne dein
+    secure: true,
     auth: {
       user: process.env.EMAIL_USER,
       pass: process.env.EMAIL_PASS,
     },
-    // YE SETTINGS ADD KAREIN:
-    connectionTimeout: 20000, // 20 seconds (Render ke liye zaroori hai)
-    greetingTimeout: 20000,
-    socketTimeout: 20000,
+    // RENDER SPECIFIC FIXES:
+    pool: true, // Connection reuse karega
+    connectionTimeout: 20000, // 20 seconds wait karega connect hone ke liye
+    greetingTimeout: 20000, // SMTP greeting ke liye 20s
+    socketTimeout: 30000, // Data transfer ke liye 30s
     tls: {
-      rejectUnauthorized: false, // Security handshake failures rokne ke liye
+      rejectUnauthorized: false, // Handshake errors avoid karne ke liye
     },
   });
-
   try {
     await transporter.sendMail({
       from: process.env.EMAIL_FROM,
