@@ -9,7 +9,9 @@ export const transporter = nodemailer.createTransport({
     pass: process.env.EMAIL_PASS,
   },
   // Render connectivity fixes
-  connectionTimeout: 10000,
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 20000,
   tls: {
     rejectUnauthorized: false,
     minVersion: "TLSv1.2",
