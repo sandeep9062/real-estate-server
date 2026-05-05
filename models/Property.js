@@ -24,7 +24,7 @@ const propertySchema = new mongoose.Schema(
   {
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
-
+    slug: { type: String, unique: true, sparse: true, trim: true },
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Project",
@@ -325,7 +325,12 @@ const propertySchema = new mongoose.Schema(
   },
 );
 
-propertySchema.index({ deal: 1, "location.city": 1, isActive: 1, deletedAt: 1 });
+propertySchema.index({
+  deal: 1,
+  "location.city": 1,
+  isActive: 1,
+  deletedAt: 1,
+});
 propertySchema.index({ deal: 1, price: 1 });
 propertySchema.index({ type: 1, propertyCategory: 1 });
 
