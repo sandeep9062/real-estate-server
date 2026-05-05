@@ -7,20 +7,20 @@ import {
   updateJournal,
   deleteJournal,
 } from "../controllers/journalController.js";
-import { protect, checkAdmin } from "../middlewares/authMiddleware.js";
+
 import upload from "../middlewares/multer.js";
 
 const router = express.Router();
 
 router
   .route("/")
-  .post(protect, checkAdmin, upload.single("coverImage"), createJournal)
+  .post(upload.single("coverImage"), createJournal)
   .get(getJournals);
 router
   .route("/:id")
   .get(getJournalById)
-  .put(protect, checkAdmin, upload.single("coverImage"), updateJournal)
-  .delete(protect, checkAdmin, deleteJournal);
+  .put(upload.single("coverImage"), updateJournal)
+  .delete(deleteJournal);
 router.route("/slug/:slug").get(getJournalBySlug);
 
 export default router;
