@@ -34,6 +34,8 @@ export function buildPropertyFindQuery(reqQuery) {
       { "location.state": { $regex: search, $options: "i" } },
       { "location.address": { $regex: search, $options: "i" } },
       { "location.city": { $regex: search, $options: "i" } },
+      { "location.sector": { $regex: search, $options: "i" } },
+      { "location.country": { $regex: search, $options: "i" } },
       { description: { $regex: search, $options: "i" } },
       { title: { $regex: search, $options: "i" } },
     ];
