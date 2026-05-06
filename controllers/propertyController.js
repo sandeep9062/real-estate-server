@@ -189,10 +189,9 @@ const createProperty = asyncHandler(async (req, res) => {
   const floorPlanImages = [...floorPlanFromBody, ...uploadedFloorPlans];
   const nearbyParsed = parseMaybeJson(rawNearby);
   const amenitiesParsed = parseMaybeJson(rawAmenities);
-  const amenities =
-    Array.isArray(amenitiesParsed)
-      ? amenitiesParsed.filter((x) => typeof x === "string")
-      : undefined;
+  const amenities = Array.isArray(amenitiesParsed)
+    ? amenitiesParsed.filter((x) => typeof x === "string")
+    : undefined;
   const negotiableVal = coerceBool(rawNegotiable);
 
   const property = new Property({
@@ -267,9 +266,17 @@ const createProperty = asyncHandler(async (req, res) => {
 const getProperties = asyncHandler(async (req, res) => {
   const query = buildPropertyFindQuery(req.query);
 
-  const properties = await Property.find(query)
+  let propertiesQuery = Property.find(query)
     .populate("user", "name email phone")
     .sort({ createdAt: -1 });
+
+  // Apply limit if provided
+  if (req.query.limit) {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
+    propertiesQuery = propertiesQuery.limit(limit);
+  }
+
+  const properties = await propertiesQuery;
 
   const transformedProperties = properties.map((property) => {
     const propertyObj = property.toObject();
@@ -301,7 +308,10 @@ const getCompareProperties = asyncHandler(async (req, res) => {
   }).populate("user", "name email phone");
 
   const map = new Map(
-    properties.map((p) => [p._id.toString(), transformPropertyCoordinates(p.toObject())]),
+    properties.map((p) => [
+      p._id.toString(),
+      transformPropertyCoordinates(p.toObject()),
+    ]),
   );
   const ordered = ids.map((id) => map.get(id)).filter(Boolean);
   res.json(ordered);
@@ -532,9 +542,7 @@ const updateProperty = asyncHandler(async (req, res) => {
   }
 
   if (bodyReraNumber !== undefined) {
-    property.reraNumber = bodyReraNumber
-      ? String(bodyReraNumber).trim()
-      : "";
+    property.reraNumber = bodyReraNumber ? String(bodyReraNumber).trim() : "";
   }
 
   if (isAdmin) {
