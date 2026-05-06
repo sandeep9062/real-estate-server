@@ -5,7 +5,7 @@ import asyncHandler from "express-async-handler";
 // @route   POST /api/journals
 // @access  Private/Admin
 const createJournal = asyncHandler(async (req, res) => {
-  const { title, category, excerpt, content, targetSector } = req.body;
+  const { title, slug, category, excerpt, content, targetSector } = req.body;
   const coverImage = req.file ? req.file.secure_url : null;
 
   const journalExists = await Journal.findOne({ title });
@@ -17,7 +17,9 @@ const createJournal = asyncHandler(async (req, res) => {
 
   const journal = new Journal({
     title,
-    slug: title.toLowerCase().replace(/ /g, "-"), // Generate slug from title
+    slug: slug
+      ? slug.toLowerCase().replace(/ /g, "-")
+      : title.toLowerCase().replace(/ /g, "-"),
     category,
     excerpt,
     content,
@@ -55,16 +57,18 @@ const getJournalById = asyncHandler(async (req, res) => {
 // @route   PUT /api/journals/:id
 // @access  Private/Admin
 const updateJournal = asyncHandler(async (req, res) => {
-  const { title, category, excerpt, content, targetSector } = req.body;
+  const { title, slug, category, excerpt, content, targetSector } = req.body;
   const coverImage = req.file ? req.file.secure_url : null;
 
   const journal = await Journal.findById(req.params.id);
 
   if (journal) {
     journal.title = title || journal.title;
-    journal.slug = title
-      ? title.toLowerCase().replace(/ /g, "-")
-      : journal.slug; // Update slug if title changes
+    journal.slug = slug
+      ? slug.toLowerCase().replace(/ /g, "-")
+      : title
+        ? title.toLowerCase().replace(/ /g, "-")
+        : journal.slug;
     journal.category = category || journal.category;
     journal.excerpt = excerpt || journal.excerpt;
     journal.content = content || journal.content;
