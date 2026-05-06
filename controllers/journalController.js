@@ -1,5 +1,6 @@
 import Journal from "../models/Journal.js";
 import asyncHandler from "express-async-handler";
+import formatJournalContent from "../utils/formatJournalContent.js";
 
 // @desc    Create new journal post
 // @route   POST /api/journals
@@ -15,6 +16,8 @@ const createJournal = asyncHandler(async (req, res) => {
     throw new Error("Journal post with this title already exists");
   }
 
+  const formattedContent = formatJournalContent(content);
+
   const journal = new Journal({
     title,
     slug: slug
@@ -22,7 +25,7 @@ const createJournal = asyncHandler(async (req, res) => {
       : title.toLowerCase().replace(/ /g, "-"),
     category,
     excerpt,
-    content,
+    content: formattedContent,
     coverImage,
     targetSector,
   });
@@ -71,7 +74,7 @@ const updateJournal = asyncHandler(async (req, res) => {
         : journal.slug;
     journal.category = category || journal.category;
     journal.excerpt = excerpt || journal.excerpt;
-    journal.content = content || journal.content;
+    journal.content = content ? formatJournalContent(content) : journal.content;
     journal.coverImage = coverImage || journal.coverImage;
     journal.targetSector = targetSector || journal.targetSector;
 
