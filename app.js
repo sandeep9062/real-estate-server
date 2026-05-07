@@ -29,7 +29,7 @@ import visitReviewRoutes from "./routes/visitReviewRoutes.js";
 import developerRoutes from "./routes/developerRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import journalRoutes from "./routes/journalRoutes.js";
-import seedRoute from "./routes/seeder.js";
+
 //import migrationRoutes from "./routes/migration.js";
 
 connectDB();
@@ -116,7 +116,6 @@ app.use("/api/v1/projects", projectRoutes);
 
 // Uncomment these lines to enable seeding and migration routes
 
-app.use("/api/seeder", seedRoute);
 //app.use("/api", migrationRoutes);
 
 // Error handling middleware
