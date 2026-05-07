@@ -45,4 +45,80 @@ router.post("/migrate", async (req, res) => {
   }
 });
 
+/**
+ * @route   POST /api/migrate-slugs
+ * @desc    Generate slugs for all properties missing one (title → URL-friendly slug)
+ * @access  Private/Admin
+ */
+import slugify from "slugify";
+
+router.post("/migrate-slugs", async (req, res) => {
+  try {
+    const missingSlugDocs = await Property.find({
+      $or: [{ slug: { $exists: false } }, { slug: null }, { slug: "" }],
+    }).lean();
+
+    if (missingSlugDocs.length === 0) {
+      return res.status(200).json({
+        success: true,
+        message: "All properties already have a slug. Nothing to migrate.",
+        totalProcessed: 0,
+      });
+    }
+
+    let updated = 0;
+    let errors = 0;
+    const BATCH_SIZE = 100;
+
+    for (let i = 0; i < missingSlugDocs.length; i += BATCH_SIZE) {
+      const batch = missingSlugDocs.slice(i, i + BATCH_SIZE);
+      const operations = [];
+
+      for (const doc of batch) {
+        if (!doc.title || typeof doc.title !== "string") {
+          errors++;
+          continue;
+        }
+
+        const baseSlug = slugify(doc.title, {
+          lower: true,
+          strict: true,
+          trim: true,
+        });
+
+        const suffix = doc._id.toString().slice(-6);
+        const slug = `${baseSlug}-${suffix}`;
+
+        operations.push({
+          updateOne: {
+            filter: { _id: doc._id },
+            update: { $set: { slug } },
+          },
+        });
+      }
+
+      if (operations.length > 0) {
+        const result = await Property.bulkWrite(operations);
+        updated +=
+          result.modifiedCount ?? result.upsertedCount ?? operations.length;
+      }
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Slug migration completed.",
+      totalFound: missingSlugDocs.length,
+      totalProcessed: updated,
+      totalSkipped: errors,
+    });
+  } catch (error) {
+    console.error("Slug Migration Error:", error);
+    return res.status(500).json({
+      success: false,
+      message: "Internal Server Error during slug migration.",
+      error: error.message,
+    });
+  }
+});
+
 export default router;

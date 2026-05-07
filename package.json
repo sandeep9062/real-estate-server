@@ -39,6 +39,7 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.11",
     "resend": "^6.12.2",
+    "slugify": "^1.6.9",
     "uuid": "^13.0.0"
   }
 }

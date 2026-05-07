@@ -245,6 +245,10 @@ const createProperty = asyncHandler(async (req, res) => {
         : undefined,
   });
 
+  if (req.body.slug) {
+    property.slug = req.body.slug;
+  }
+
   const createdProperty = await property.save();
 
   try {
@@ -404,12 +408,12 @@ const recordPropertyView = asyncHandler(async (req, res) => {
   res.json({ success: true });
 });
 
-// @desc    Get single property
-// @route   GET /api/properties/:id
+// @desc    Get single property by slug
+// @route   GET /api/properties/slug/:slug
 // @access  Public
-const getPropertyById = asyncHandler(async (req, res) => {
+const getPropertyBySlug = asyncHandler(async (req, res) => {
   const property = await Property.findOne({
-    _id: req.params.id,
+    slug: req.params.slug,
     isActive: true,
     deletedAt: null,
   }).populate("user", "name email phone");
@@ -418,6 +422,54 @@ const getPropertyById = asyncHandler(async (req, res) => {
     const propertyObj = transformPropertyCoordinates(property.toObject());
     res.json(propertyObj);
   } else {
+    res.status(404);
+    throw new Error("Property not found");
+  }
+});
+
+// @desc    Get single property (by id or slug)
+// @route   GET /api/properties/:id
+// @access  Public
+const getPropertyById = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+
+  // Try to find by slug first (if it's not a valid ObjectId)
+  if (id && !mongoose.Types.ObjectId.isValid(id)) {
+    const property = await Property.findOne({
+      slug: id,
+      isActive: true,
+      deletedAt: null,
+    }).populate("user", "name email phone");
+
+    if (property) {
+      const propertyObj = transformPropertyCoordinates(property.toObject());
+      return res.json(propertyObj);
+    }
+    return res.status(404).json({ message: "Property not found" });
+  }
+
+  const property = await Property.findOne({
+    _id: id,
+    isActive: true,
+    deletedAt: null,
+  }).populate("user", "name email phone");
+
+  if (property) {
+    const propertyObj = transformPropertyCoordinates(property.toObject());
+    res.json(propertyObj);
+  } else {
+    // Fallback: try slug lookup
+    const slugProperty = await Property.findOne({
+      slug: id,
+      isActive: true,
+      deletedAt: null,
+    }).populate("user", "name email phone");
+
+    if (slugProperty) {
+      const propertyObj = transformPropertyCoordinates(slugProperty.toObject());
+      return res.json(propertyObj);
+    }
+
     res.status(404);
     throw new Error("Property not found");
   }
@@ -486,6 +538,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     : property.image;
 
   property.title = title || property.title;
+  property.slug = req.body.slug || property.slug;
   property.description = description || property.description;
   property.deal = deal || property.deal;
   property.type = type || property.type;
@@ -769,6 +822,7 @@ const createWhatsAppLead = asyncHandler(async (req, res) => {
 export {
   createProperty,
   getProperties,
+  getPropertyBySlug,
   getPropertyById,
   updateProperty,
   deleteProperty,

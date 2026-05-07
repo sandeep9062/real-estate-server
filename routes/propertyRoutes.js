@@ -4,6 +4,7 @@ import {
   createProperty,
   getProperties,
   getPropertyById,
+  getPropertyBySlug,
   updateProperty,
   deleteProperty,
   getOwnedProperties,
@@ -34,6 +35,7 @@ router
 
 router.get("/compare", getCompareProperties);
 router.get("/similar", getSimilarProperties);
+router.get("/slug/:slug", getPropertyBySlug);
 router.get("/owned", protect, getOwnedProperties);
 
 router.get("/:id/visit-reviews/summary", getPropertyVisitReviewSummary);
