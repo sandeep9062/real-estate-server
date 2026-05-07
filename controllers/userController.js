@@ -348,6 +348,10 @@ export const getRecentlyViewed = async (req, res) => {
       .populate({
         path: "recentlyViewedProperties",
         match: { isActive: true, deletedAt: null },
+        populate: {
+          path: "user",
+          select: "phone name",
+        },
       })
       .lean();
 
