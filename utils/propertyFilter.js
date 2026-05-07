@@ -25,9 +25,13 @@ export function buildPropertyFindQuery(reqQuery) {
     nearKm,
     bbox,
     polygon,
+    includeInactive,
   } = reqQuery;
 
-  const query = { isActive: true, deletedAt: null };
+  const query = { deletedAt: null };
+  if (includeInactive !== "true") {
+    query.isActive = true;
+  }
 
   if (search) {
     query.$or = [
