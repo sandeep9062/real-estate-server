@@ -8,6 +8,8 @@ const journalSchema = new mongoose.Schema({
   content: String,
   coverImage: String,
   targetSector: String,
+  metaTitle: String,
+  keywords: [String],
   createdAt: { type: Date, default: Date.now },
 });
 

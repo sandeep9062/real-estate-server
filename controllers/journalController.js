@@ -5,7 +5,16 @@ import asyncHandler from "express-async-handler";
 // @route   POST /api/journals
 // @access  Private/Admin
 const createJournal = asyncHandler(async (req, res) => {
-  const { title, slug, category, excerpt, content, targetSector } = req.body;
+  const {
+    title,
+    slug,
+    category,
+    excerpt,
+    content,
+    targetSector,
+    metaTitle,
+    keywords,
+  } = req.body;
   const coverImage = req.file ? req.file.secure_url : null;
 
   const journalExists = await Journal.findOne({ title });
@@ -13,6 +22,18 @@ const createJournal = asyncHandler(async (req, res) => {
   if (journalExists) {
     res.status(400);
     throw new Error("Journal post with this title already exists");
+  }
+
+  let parsedKeywords = keywords;
+  if (typeof keywords === "string") {
+    try {
+      parsedKeywords = JSON.parse(keywords);
+    } catch {
+      parsedKeywords = keywords
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean);
+    }
   }
 
   const journal = new Journal({
@@ -25,6 +46,8 @@ const createJournal = asyncHandler(async (req, res) => {
     content,
     coverImage,
     targetSector,
+    metaTitle,
+    keywords: parsedKeywords,
   });
 
   const createdJournal = await journal.save();
@@ -57,7 +80,16 @@ const getJournalById = asyncHandler(async (req, res) => {
 // @route   PUT /api/journals/:id
 // @access  Private/Admin
 const updateJournal = asyncHandler(async (req, res) => {
-  const { title, slug, category, excerpt, content, targetSector } = req.body;
+  const {
+    title,
+    slug,
+    category,
+    excerpt,
+    content,
+    targetSector,
+    metaTitle,
+    keywords,
+  } = req.body;
   const coverImage = req.file ? req.file.secure_url : null;
 
   const journal = await Journal.findById(req.params.id);
@@ -74,6 +106,21 @@ const updateJournal = asyncHandler(async (req, res) => {
     journal.content = content || journal.content;
     journal.coverImage = coverImage || journal.coverImage;
     journal.targetSector = targetSector || journal.targetSector;
+    journal.metaTitle = metaTitle || journal.metaTitle;
+    if (keywords !== undefined) {
+      if (typeof keywords === "string") {
+        try {
+          journal.keywords = JSON.parse(keywords);
+        } catch {
+          journal.keywords = keywords
+            .split(",")
+            .map((k) => k.trim())
+            .filter(Boolean);
+        }
+      } else {
+        journal.keywords = keywords;
+      }
+    }
 
     const updatedJournal = await journal.save();
     res.json(updatedJournal);
