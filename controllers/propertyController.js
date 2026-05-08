@@ -819,6 +819,37 @@ const createWhatsAppLead = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get hero section real-time stats (properties, projects, cities)
+// @route   GET /api/properties/stats/hero
+// @access  Public
+const getHeroStats = asyncHandler(async (req, res) => {
+  const [propertyCount, distinctCities, projectCount] = await Promise.all([
+    Property.countDocuments({
+      status: "Active",
+      deletedAt: null,
+      isActive: { $ne: false },
+    }),
+    Property.distinct("location.city", {
+      location: { city: { $exists: true, $ne: "" } },
+      status: "Active",
+      deletedAt: null,
+    }),
+    // Dynamic import of Project model (may not always be needed)
+    import("../models/Project.js")
+      .then((mod) => mod.default.countDocuments())
+      .catch(() => 0),
+  ]);
+
+  res.json({
+    success: true,
+    data: {
+      properties: propertyCount,
+      projects: projectCount,
+      cities: distinctCities.filter(Boolean).length,
+    },
+  });
+});
+
 export {
   createProperty,
   getProperties,
@@ -831,4 +862,5 @@ export {
   getCompareProperties,
   getSimilarProperties,
   recordPropertyView,
+  getHeroStats,
 };

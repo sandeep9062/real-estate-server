@@ -22,11 +22,14 @@ import {
 
 import { protect, optionalAuth } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multer.js";
+import { getHeroStats } from "../controllers/propertyController.js";
 
 const propertyUpload = upload.fields([
   { name: "image", maxCount: 25 },
   { name: "floorPlan", maxCount: 15 },
 ]);
+
+router.get("/stats/hero", getHeroStats);
 
 router
   .route("/")
