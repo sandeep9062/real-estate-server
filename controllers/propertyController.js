@@ -825,16 +825,15 @@ const createWhatsAppLead = asyncHandler(async (req, res) => {
 const getHeroStats = asyncHandler(async (req, res) => {
   const [propertyCount, distinctCities, projectCount] = await Promise.all([
     Property.countDocuments({
-      status: "Active",
       deletedAt: null,
       isActive: { $ne: false },
     }),
     Property.distinct("location.city", {
-      location: { city: { $exists: true, $ne: "" } },
-      status: "Active",
+      "location.city": { $exists: true, $ne: "" },
       deletedAt: null,
+      isActive: { $ne: false },
     }),
-    // Dynamic import of Project model (may not always be needed)
+    // Dynamic import of Project model
     import("../models/Project.js")
       .then((mod) => mod.default.countDocuments())
       .catch(() => 0),
