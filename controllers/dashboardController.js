@@ -1,6 +1,7 @@
 import Property from "../models/Property.js";
 import User from "../models/User.js";
 import Booking from "../models/Booking.js";
+import Journal from "../models/Journal.js";
 
 // @desc    Get dashboard statistics
 // @route   GET /api/dashboard/stats
@@ -15,6 +16,7 @@ export const getDashboardStats = async (req, res) => {
       totalUsers,
       totalBookings,
       todayBookings,
+      totalJournals,
       totalRevenue,
       monthlyRevenue,
       bookingsPerMonth,
@@ -25,6 +27,7 @@ export const getDashboardStats = async (req, res) => {
       User.countDocuments(),
       Booking.countDocuments(),
       Booking.countDocuments({ createdAt: { $gte: today } }),
+      Journal.countDocuments(),
       Booking.aggregate([
         {
           $lookup: {
@@ -198,6 +201,7 @@ export const getDashboardStats = async (req, res) => {
       totalProperties,
       totalUsers,
       totalBookings,
+      totalJournals,
 
       todayBookings,
       totalRevenue: totalRevenue[0]?.totalRevenue || 0,
