@@ -26,6 +26,7 @@ export function buildPropertyFindQuery(reqQuery) {
     bbox,
     polygon,
     includeInactive,
+    isFeatured,
   } = reqQuery;
 
   const query = { deletedAt: null };
@@ -68,6 +69,9 @@ export function buildPropertyFindQuery(reqQuery) {
   }
   if (projectId) {
     query.projectId = projectId;
+  }
+  if (isFeatured === "true") {
+    query.isFeatured = true;
   }
   if (priceMin || priceMax) {
     query.price = {};

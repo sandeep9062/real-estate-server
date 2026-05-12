@@ -54,12 +54,36 @@ const createJournal = asyncHandler(async (req, res) => {
   res.status(201).json(createdJournal);
 });
 
-// @desc    Get all journal posts
+// @desc    Get all journal posts (with pagination)
 // @route   GET /api/journals
 // @access  Public
 const getJournals = asyncHandler(async (req, res) => {
-  const journals = await Journal.find({});
-  res.json(journals);
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 12;
+  const skip = (page - 1) * limit;
+
+  // Build optional filter based on query params
+  const filter = {};
+  if (req.query.category) {
+    filter.category = req.query.category;
+  }
+  if (req.query.sector) {
+    filter.targetSector = req.query.sector;
+  }
+
+  const total = await Journal.countDocuments(filter);
+  const journals = await Journal.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  res.json({
+    journals,
+    currentPage: page,
+    totalPages: Math.ceil(total / limit),
+    total,
+    hasNextPage: page * limit < total,
+  });
 });
 
 // @desc    Get journal post by ID

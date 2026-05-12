@@ -333,6 +333,11 @@ propertySchema.index({
 });
 propertySchema.index({ deal: 1, price: 1 });
 propertySchema.index({ type: 1, propertyCategory: 1 });
+propertySchema.index({ createdAt: -1 });
+propertySchema.index({ status: 1, createdAt: -1 });
+propertySchema.index({ "location.city": 1, status: 1, createdAt: -1 });
+propertySchema.index({ "location.sector": 1, status: 1 });
+propertySchema.index({ "location.state": 1, status: 1 });
 
 propertySchema.virtual("id").get(function () {
   return this._id.toHexString();
