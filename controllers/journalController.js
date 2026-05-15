@@ -187,13 +187,13 @@ const getJournalBySlug = asyncHandler(async (req, res) => {
 // @route   GET /api/journals/sitemap-data
 // @access  Public
 const getJournalsForSitemap = asyncHandler(async (req, res) => {
-  // .select('slug updatedAt') se query fast ho jati hai
   const journals = await Journal.find({}, "slug updatedAt")
-    .sort({ createdAt: -1 })
+    .sort({ updatedAt: -1 })
     .lean();
 
   res.json({
     success: true,
+    count: journals.length,
     data: journals,
   });
 });
