@@ -1,5 +1,7 @@
-const { google } = require("googleapis");
-const key = require("./service-account.json"); // Aapki downloaded key
+import { google } from "googleapis";
+import { createRequire } from "module";
+const require = createRequire(import.meta.url);
+const key = require("./service-account.json");
 
 const jwtClient = new google.auth.JWT(
   key.client_email,
@@ -9,31 +11,45 @@ const jwtClient = new google.auth.JWT(
   null,
 );
 
+const indexing = google.indexing("v3");
+
 const indexUrl = async (url) => {
   try {
-    await jwtClient.authorize();
     const options = {
       url: "https://indexing.googleapis.com/v3/urlNotifications:publish",
       method: "POST",
       auth: jwtClient,
       body: JSON.stringify({
         url: url,
-        type: "URL_UPDATED", // Naya page ya updated page ke liye
+        type: "URL_UPDATED",
       }),
     };
 
-    const res = await google.indexing("v3").urlNotifications.publish(options);
-    console.log(`🚀 Success: ${url} index request sent.`);
+    await indexing.urlNotifications.publish(options);
+    console.log(`🚀 Success: ${url}`);
   } catch (error) {
     console.error(`❌ Error indexing ${url}:`, error.message);
   }
 };
 
-// Example: Bulk Indexing array
+// Logic to handle bulk indexing with a small delay
+const bulkIndex = async (urls) => {
+  await jwtClient.authorize();
+  console.log("🔑 Google API Authorized. Starting Bulk Indexing...");
+
+  for (const url of urls) {
+    await indexUrl(url);
+    // 500ms delay to prevent hitting rate limits too fast
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  console.log("✅ All indexing requests processed.");
+};
+
 const urlsToIndex = [
   "https://www.propertybulbul.com/property/123",
   "https://www.propertybulbul.com/journal/safety-in-tricity",
-  // Yahan apne wo 211 URLs ki list dal sakte ho
+  // 211 URLs list here
 ];
 
-urlsToIndex.forEach((url) => indexUrl(url));
+bulkIndex(urlsToIndex);
