@@ -86,6 +86,17 @@ const getJournals = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get all distinct journal categories
+// @route   GET /api/journals/categories
+// @access  Public
+const getJournalCategories = asyncHandler(async (req, res) => {
+  const categories = await Journal.distinct("category");
+  res.json({
+    success: true,
+    categories: categories.filter(Boolean),
+  });
+});
+
 // @desc    Get journal post by ID
 // @route   GET /api/journals/:id
 // @access  Public
@@ -203,6 +214,7 @@ export {
   getJournals,
   getJournalById,
   getJournalBySlug,
+  getJournalCategories,
   updateJournal,
   deleteJournal,
   getJournalsForSitemap,

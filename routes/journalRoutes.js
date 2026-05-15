@@ -4,6 +4,7 @@ import {
   getJournals,
   getJournalById,
   getJournalBySlug,
+  getJournalCategories,
   updateJournal,
   deleteJournal,
   getJournalsForSitemap,
@@ -14,6 +15,7 @@ import upload from "../middlewares/multer.js";
 const router = express.Router();
 
 router.get("/sitemap-data", getJournalsForSitemap);
+router.get("/categories", getJournalCategories);
 
 router
   .route("/")
