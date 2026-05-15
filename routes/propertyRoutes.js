@@ -13,6 +13,7 @@ import {
   getCompareProperties,
   getSimilarProperties,
   recordPropertyView,
+  getPropertiesForSitemap,
 } from "../controllers/propertyController.js";
 
 import {
@@ -30,7 +31,7 @@ const propertyUpload = upload.fields([
 ]);
 
 router.get("/stats/hero", getHeroStats);
-
+router.get("/sitemap-data", getPropertiesForSitemap);
 router
   .route("/")
   .get(getProperties)

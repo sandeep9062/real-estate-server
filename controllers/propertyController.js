@@ -304,6 +304,21 @@ const getProperties = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get all property slugs for sitemap
+// @route   GET /api/properties/sitemap-data
+// @access  Public
+const getPropertiesForSitemap = asyncHandler(async (req, res) => {
+  const properties = await Property.find({}, "slug updatedAt")
+    .sort({ updatedAt: -1 })
+    .lean();
+
+  res.json({
+    success: true,
+    count: properties.length,
+    data: properties,
+  });
+});
+
 const getCompareProperties = asyncHandler(async (req, res) => {
   const raw = req.query.ids;
   if (!raw) {
@@ -876,4 +891,5 @@ export {
   getSimilarProperties,
   recordPropertyView,
   getHeroStats,
+  getPropertiesForSitemap,
 };

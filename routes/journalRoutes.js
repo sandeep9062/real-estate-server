@@ -6,11 +6,14 @@ import {
   getJournalBySlug,
   updateJournal,
   deleteJournal,
+  getJournalsForSitemap,
 } from "../controllers/journalController.js";
 
 import upload from "../middlewares/multer.js";
 
 const router = express.Router();
+
+router.get("/sitemap-data", getJournalsForSitemap);
 
 router
   .route("/")
