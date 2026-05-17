@@ -13,6 +13,8 @@ import {
   escapeRegex,
 } from "../utils/propertyFilter.js";
 
+// pdf service URL from env or default
+
 const PDF_SERVICE_URL =
   process.env.PDF_SERVICE_URL || "https://real-estate-pdf-service.onrender.com";
 
