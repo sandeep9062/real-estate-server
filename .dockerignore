@@ -1,0 +1,60 @@
+# ─── Dependencies ────────────────────────────────────────
+node_modules
+npm-debug.log*
+npm-debug.log
+
+# ─── Environment & Secrets ───────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+
+# ─── Version Control ─────────────────────────────────────
+.git
+.gitignore
+.gitattributes
+.gitkeep
+
+# ─── IDE & Editor ────────────────────────────────────────
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# ─── OS Files ────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ─── Logs & Debug ───────────────────────────────────────
+logs
+*.log
+
+# ─── Testing & Coverage ─────────────────────────────────
+coverage
+.nyc_output
+
+# ─── Docker ──────────────────────────────────────────────
+Dockerfile
+.dockerignore
+
+# ─── Local Uploads (should use volumes in production) ───
+uploads/*
+!uploads/.gitkeep
+
+# ─── Temp & Cache ────────────────────────────────────────
+tmp
+temp
+.cache
+
+# ─── Cloud Deployment Configs ────────────────────────────
+.docker
+.elasticbeanstalk
+serverless
+.circleci
+.github
+.gitlab-ci.yml
+.drone.yml
