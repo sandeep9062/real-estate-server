@@ -8,15 +8,18 @@ import {
   updateProject,
   deleteProject,
 } from "../controllers/projectController.js";
+import upload from "../middlewares/multer.js";
 // Import your auth middleware (e.g., protect, admin)
 // import { protect, admin } from '../middleware/authMiddleware.js';
 
-router.route("/").get(getProjects).post(createProject); // Add protect/admin middleware here later
-router.route("/slug/:slug").get(getProjectBySlug); // Add protect/admin middleware here later
+const projectUpload = upload.fields([{ name: "images", maxCount: 25 }]);
+
+router.route("/").get(getProjects).post(projectUpload, createProject);
+router.route("/slug/:slug").get(getProjectBySlug);
 router
   .route("/:id")
   .get(getProjectById)
-  .put(updateProject)
-  .delete(deleteProject); // Add protect/admin middleware here later
+  .put(projectUpload, updateProject)
+  .delete(deleteProject);
 
 export default router;

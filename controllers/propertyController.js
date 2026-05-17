@@ -270,9 +270,9 @@ const createProperty = asyncHandler(async (req, res) => {
 const getProperties = asyncHandler(async (req, res) => {
   const query = buildPropertyFindQuery(req.query);
 
-  // Pagination: default page=1, limit=10, max limit=100
-  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
-  const limit = Math.min(parseInt(req.query.limit, 10) || 10, 100);
+  // Pagination: default page=1, limit=12, max limit=100
+  const page = Math.max(1, parseInt(req.query.page, 12) || 1);
+  const limit = Math.min(parseInt(req.query.limit, 12) || 12, 100);
   const skip = (page - 1) * limit;
 
   // Get total count for pagination metadata
