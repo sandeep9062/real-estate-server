@@ -38,60 +38,7 @@ const app = express();
 const PORT = process.env.PORT || 9000;
 const PDF_SERVICE_URL =
   process.env.PDF_SERVICE_URL || "https://real-estate-pdf-service.onrender.com";
-// ===================================================
-// FORCE RE-ROUTE & INJECT MISSING MONGOOSE DRIVER
-// ===================================================
-(function enforceMongooseDriver() {
-  const fs = require("fs");
-  const path = require("path");
 
-  // Clean, absolute target lookup path for the native driver workspace inside Render
-  const targetDir = path.resolve(
-    process.cwd(),
-    "node_modules",
-    "mongoose",
-    "lib",
-    "drivers",
-    "node-mongodb-native",
-  );
-  const targetFile = path.resolve(targetDir, "bulkWriteResult.js");
-
-  try {
-    // Try resolving it out-of-the-box
-    require("mongoose/lib/drivers/node-mongodb-native/bulkWriteResult");
-  } catch (error) {
-    console.log(
-      "⚠️ Mongoose driver script error caught. Re-building virtual dependency...",
-    );
-
-    try {
-      // If the node_modules architecture is physically missing altogether, stop here
-      if (!fs.existsSync(targetDir)) {
-        console.error(
-          "❌ Serious Error: Mongoose is missing entirely from node_modules layout.",
-        );
-        return;
-      }
-
-      // Force create the missing operational file explicitly
-      const stubContent = "module.exports = class BulkWriteResult {};";
-      fs.writeFileSync(targetFile, stubContent, {
-        encoding: "utf8",
-        flag: "w",
-      });
-
-      console.log(
-        "🛡️ Virtual bulkWriteResult.js stub written successfully to disk.",
-      );
-    } catch (writeError) {
-      console.error(
-        "❌ Failed to inject dynamic driver file stub:",
-        writeError.message,
-      );
-    }
-  }
-})();
-// ===================================================
 // ==========================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
