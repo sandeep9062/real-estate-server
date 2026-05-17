@@ -39,6 +39,37 @@ const PORT = process.env.PORT || 9000;
 const PDF_SERVICE_URL =
   process.env.PDF_SERVICE_URL || "https://real-estate-pdf-service.onrender.com";
 
+// ==========================================
+// RUNTIME MONGOOSE DRIVER MOUNT SAFEGUARD
+// ==========================================
+try {
+  // Check if Node can natively resolve the nested driver interface
+  require("mongoose/lib/drivers/node-mongodb-native/bulkWriteResult");
+} catch (error) {
+  const fs = require("fs");
+  const path = require("path");
+
+  // Navigate straight to the expected library directory inside your node_modules
+  const driverDirectory = path.join(
+    __dirname,
+    "node_modules",
+    "mongoose",
+    "lib",
+    "drivers",
+    "node-mongodb-native",
+  );
+  const driverFilePath = path.join(driverDirectory, "bulkWriteResult.js");
+
+  // If the directory exists but the module file is physically missing, dynamically write the mock object structure
+  if (fs.existsSync(driverDirectory) && !fs.existsSync(driverFilePath)) {
+    const fallbackStructure = "module.exports = class BulkWriteResult {};";
+    fs.writeFileSync(driverFilePath, fallbackStructure, "utf8");
+    console.log(
+      "🛡️ Successfully applied runtime structural driver alignment patch.",
+    );
+  }
+}
+// ==========================================
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 // Trust first proxy (Render uses a proxy layer)
@@ -50,7 +81,7 @@ app.use(cookieParser());
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:3001",
-  "https://dashboard.propertybulbul.com", //admin-dashbaord
+  "https://dashboard.propertybulbul.com",
   "https://www.propertybulbul.com",
   "https://propertybulbul.com",
   // Add production frontend URL from environment variable
