@@ -10,7 +10,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Install only production dependencies — no devDependencies, no postinstall scripts
-RUN npm ci --only=production && npm cache clean --force
+RUN npm install --omit=dev && npm cache clean --force
 
 # ─── Stage 2: Production runtime ───────────────────────────────────────
 FROM node:20-alpine
