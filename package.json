@@ -1,8 +1,8 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": " Backend for the AI-powered real estate platform that connects buyers and sellers, providing personalized property recommendations, virtual tours, and seamless communication. The backend is built using Node.js and Express, with MongoDB as the database. It integrates with various APIs for AI-driven features, such as property recommendations and virtual tours.",
+  "main": "app.js",
   "scripts": {
     "start": "node app.js",
     "dev": "nodemon app.js"
