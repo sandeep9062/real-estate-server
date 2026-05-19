@@ -32,9 +32,11 @@ import journalRoutes from "./routes/journalRoutes.js";
 
 //import migrationRoutes from "./routes/migration.js";
 
+// ==========================================
 connectDB();
 
 const app = express();
+
 const PORT = process.env.PORT || 9000;
 const PDF_SERVICE_URL =
   process.env.PDF_SERVICE_URL || "https://real-estate-pdf-service.onrender.com";
@@ -112,6 +114,11 @@ app.use("/api/v1/workflows", workflowRouter);
 
 app.use("/api/v1/developers", developerRoutes);
 app.use("/api/v1/projects", projectRoutes);
+
+// Market Index routes and cron job
+import marketIndexRouter from "./routes/marketIndex.js";
+import "./scripts/cronMarketIndex.js";
+app.use("/api/market-index", marketIndexRouter);
 
 // extra routes for seeding and migration (not under /api to avoid accidental calls in production)
 
