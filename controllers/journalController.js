@@ -14,6 +14,7 @@ const createJournal = asyncHandler(async (req, res) => {
     targetSector,
     metaTitle,
     keywords,
+    isActive,
   } = req.body;
   const coverImage = req.file ? req.file.secure_url : null;
 
@@ -43,6 +44,7 @@ const createJournal = asyncHandler(async (req, res) => {
       : title.toLowerCase().replace(/ /g, "-"),
     category,
     excerpt,
+    isActive,
     content,
     coverImage,
     targetSector,
@@ -54,7 +56,7 @@ const createJournal = asyncHandler(async (req, res) => {
   res.status(201).json(createdJournal);
 });
 
-// @desc    Get all journal posts (with pagination)
+// @desc    Get all journal posts (with pagination) — only active posts
 // @route   GET /api/journals
 // @access  Public
 const getJournals = asyncHandler(async (req, res) => {
@@ -63,7 +65,7 @@ const getJournals = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   // Build optional filter based on query params
-  const filter = {};
+  const filter = { isActive: true };
   if (req.query.category) {
     filter.category = req.query.category;
   }
@@ -86,22 +88,25 @@ const getJournals = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all distinct journal categories
+// @desc    Get all distinct journal categories (from active journals only)
 // @route   GET /api/journals/categories
 // @access  Public
 const getJournalCategories = asyncHandler(async (req, res) => {
-  const categories = await Journal.distinct("category");
+  const categories = await Journal.distinct("category", { isActive: true });
   res.json({
     success: true,
     categories: categories.filter(Boolean),
   });
 });
 
-// @desc    Get journal post by ID
+// @desc    Get journal post by ID (only if active)
 // @route   GET /api/journals/:id
 // @access  Public
 const getJournalById = asyncHandler(async (req, res) => {
-  const journal = await Journal.findById(req.params.id);
+  const journal = await Journal.findOne({
+    _id: req.params.id,
+    isActive: true,
+  });
 
   if (journal) {
     res.json(journal);
@@ -123,6 +128,7 @@ const updateJournal = asyncHandler(async (req, res) => {
     content,
     targetSector,
     metaTitle,
+    isActive,
     keywords,
   } = req.body;
   const coverImage = req.file ? req.file.secure_url : null;
@@ -142,6 +148,9 @@ const updateJournal = asyncHandler(async (req, res) => {
     journal.coverImage = coverImage || journal.coverImage;
     journal.targetSector = targetSector || journal.targetSector;
     journal.metaTitle = metaTitle || journal.metaTitle;
+    if (isActive !== undefined) {
+      journal.isActive = isActive;
+    }
     if (keywords !== undefined) {
       if (typeof keywords === "string") {
         try {
@@ -180,11 +189,14 @@ const deleteJournal = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get journal post by slug
+// @desc    Get journal post by slug (only if active)
 // @route   GET /api/journals/slug/:slug
 // @access  Public
 const getJournalBySlug = asyncHandler(async (req, res) => {
-  const journal = await Journal.findOne({ slug: req.params.slug });
+  const journal = await Journal.findOne({
+    slug: req.params.slug,
+    isActive: true,
+  });
 
   if (journal) {
     res.json(journal);
@@ -194,11 +206,11 @@ const getJournalBySlug = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get all journal slugs for sitemap
+// @desc    Get all journal slugs for sitemap (only active journals)
 // @route   GET /api/journals/sitemap-data
 // @access  Public
 const getJournalsForSitemap = asyncHandler(async (req, res) => {
-  const journals = await Journal.find({}, "slug updatedAt")
+  const journals = await Journal.find({ isActive: true }, "slug updatedAt")
     .sort({ updatedAt: -1 })
     .lean();
 
@@ -209,9 +221,41 @@ const getJournalsForSitemap = asyncHandler(async (req, res) => {
   });
 });
 
+// @desc    Get ALL journal posts (including inactive) — for admin dashboard
+// @route   GET /api/journals/all
+// @access  Private/Admin
+const getAllJournals = asyncHandler(async (req, res) => {
+  const page = parseInt(req.query.page) || 1;
+  const limit = parseInt(req.query.limit) || 10;
+  const skip = (page - 1) * limit;
+
+  const filter = {};
+  if (req.query.category) {
+    filter.category = req.query.category;
+  }
+  if (req.query.sector) {
+    filter.targetSector = req.query.sector;
+  }
+
+  const total = await Journal.countDocuments(filter);
+  const journals = await Journal.find(filter)
+    .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit);
+
+  res.json({
+    journals,
+    currentPage: page,
+    totalPages: Math.ceil(total / limit),
+    total,
+    hasNextPage: page * limit < total,
+  });
+});
+
 export {
   createJournal,
   getJournals,
+  getAllJournals,
   getJournalById,
   getJournalBySlug,
   getJournalCategories,
