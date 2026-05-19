@@ -115,11 +115,6 @@ app.use("/api/v1/workflows", workflowRouter);
 app.use("/api/v1/developers", developerRoutes);
 app.use("/api/v1/projects", projectRoutes);
 
-// Market Index routes and cron job
-import marketIndexRouter from "./routes/marketIndex.js";
-import "./scripts/cronMarketIndex.js";
-app.use("/api/market-index", marketIndexRouter);
-
 // extra routes for seeding and migration (not under /api to avoid accidental calls in production)
 
 // Uncomment these lines to enable seeding and migration routes
