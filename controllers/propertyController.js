@@ -149,29 +149,10 @@ const createProperty = asyncHandler(async (req, res) => {
     pricePerSqft,
     negotiable: rawNegotiable,
     videoUrl,
+    constructionStatus,
   } = req.body;
 
   const images = getUploadedImagesAndFloorPlans(req).images;
-
-  // Log the received data for debugging
-  //  console.log("Received property data:", {
-  //     title,
-  //     description,
-  //     deal,
-  //     type,
-  //     propertyCategory,
-  //     area,
-  //     availability,
-  //     furnishing,
-  //     price,
-  //     postedBy,
-  //     rawLocation,
-  //     commercialPropertyTypes,
-  //     investmentOptions,
-  //     facilities,
-  //     imagesCount: images.length,
-  //     user: req.user?._id
-  //   });
 
   const location =
     typeof rawLocation === "string" ? JSON.parse(rawLocation) : rawLocation;
@@ -245,6 +226,10 @@ const createProperty = asyncHandler(async (req, res) => {
       videoUrl != null && String(videoUrl).trim()
         ? String(videoUrl).trim()
         : undefined,
+    constructionStatus:
+      typeof constructionStatus === "string"
+        ? JSON.parse(constructionStatus)
+        : constructionStatus,
   });
 
   if (req.body.slug) {
@@ -560,6 +545,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     pricePerSqft,
     negotiable: rawNegotiable,
     videoUrl,
+    constructionStatus: rawConstructionStatus,
   } = req.body;
 
   const { images: newImages, floorPlans: newFloorPlans } =
@@ -680,6 +666,13 @@ const updateProperty = asyncHandler(async (req, res) => {
   }
   if (videoUrl !== undefined) {
     property.videoUrl = videoUrl ? String(videoUrl).trim() : "";
+  }
+
+  if (rawConstructionStatus !== undefined) {
+    property.constructionStatus =
+      typeof rawConstructionStatus === "string"
+        ? JSON.parse(rawConstructionStatus)
+        : rawConstructionStatus;
   }
 
   const updatedProperty = await property.save();
@@ -854,7 +847,7 @@ const createWhatsAppLead = asyncHandler(async (req, res) => {
 // @route   GET /api/properties/stats/hero
 // @access  Public
 const getHeroStats = asyncHandler(async (req, res) => {
-  const [propertyCount, distinctCities, projectCount] = await Promise.all([
+  const [propertyCount, rawCities, projectCount] = await Promise.all([
     Property.countDocuments({
       deletedAt: null,
       isActive: { $ne: false },
@@ -864,18 +857,33 @@ const getHeroStats = asyncHandler(async (req, res) => {
       deletedAt: null,
       isActive: { $ne: false },
     }),
-    // Dynamic import of Project model
     import("../models/Project.js")
       .then((mod) => mod.default.countDocuments())
       .catch(() => 0),
   ]);
+
+  // Normalize city names — trim whitespace, lowercase, then count unique
+  const TRICITY_CITIES = [
+    "chandigarh",
+    "mohali",
+    "panchkula",
+    "zirakpur",
+    "kharar",
+  ];
+
+  const normalizedCities = rawCities
+    .filter(Boolean)
+    .map((city) => city.trim().toLowerCase())
+    .filter((city) => TRICITY_CITIES.includes(city)); // only count valid Tricity cities
+
+  const uniqueCityCount = new Set(normalizedCities).size;
 
   res.json({
     success: true,
     data: {
       properties: propertyCount,
       projects: projectCount,
-      cities: distinctCities.filter(Boolean).length,
+      cities: uniqueCityCount, // will now correctly show 5 max
     },
   });
 });

@@ -51,8 +51,7 @@ function pickEnum(value, allowed, fallback) {
   const exact = allowed.find((a) => a.toLowerCase() === lower);
   if (exact) return exact;
   const loose = allowed.find(
-    (a) =>
-      lower.includes(a.toLowerCase()) || a.toLowerCase().includes(lower),
+    (a) => lower.includes(a.toLowerCase()) || a.toLowerCase().includes(lower),
   );
   if (loose) return loose;
   return fallback;
@@ -68,7 +67,8 @@ function toInt(v, def = 0) {
 
 function toOptPositiveNumber(v) {
   if (v == null || v === "") return undefined;
-  const n = typeof v === "number" ? v : Number(String(v).replace(/[^\d.-]/g, ""));
+  const n =
+    typeof v === "number" ? v : Number(String(v).replace(/[^\d.-]/g, ""));
   if (!Number.isFinite(n) || n < 0) return undefined;
   return Math.round(n * 100) / 100;
 }
@@ -78,7 +78,10 @@ function parseInrPrice(raw) {
   if (typeof raw === "number" && Number.isFinite(raw) && raw >= 0) {
     return Math.round(raw);
   }
-  const s = String(raw).toLowerCase().replace(/[₹,\s]/g, " ").trim();
+  const s = String(raw)
+    .toLowerCase()
+    .replace(/[₹,\s]/g, " ")
+    .trim();
   const cr = /(\d+\.?\d*)\s*(crore|cr)\b/i.exec(s);
   if (cr) return Math.round(parseFloat(cr[1]) * 1e7);
   const lac = /(\d+\.?\d*)\s*(lakh|lac|lacs)\b/i.exec(s);
@@ -148,7 +151,8 @@ function matchAmenity(raw) {
   if (lower.includes("gym")) return "Gym";
   if (lower.includes("pool") || lower.includes("swim")) return "Swimming Pool";
   if (lower.includes("lift") || lower.includes("elevator")) return "Lift";
-  if (lower.includes("backup") || lower.includes("generator")) return "Power Backup";
+  if (lower.includes("backup") || lower.includes("generator"))
+    return "Power Backup";
   if (lower.includes("wifi") || lower.includes("wi-fi")) return "Wifi";
   if (lower.includes("club")) return "Club House";
   if (lower.includes("gas")) return "Gas Pipeline";
@@ -228,7 +232,9 @@ function coerceBool(v, defaultVal = true) {
   if (typeof v === "boolean") return v;
   if (v == null) return defaultVal;
   const s = String(v).toLowerCase();
-  if (["false", "no", "fixed", "non-negotiable", "non negotiable"].includes(s)) {
+  if (
+    ["false", "no", "fixed", "non-negotiable", "non negotiable"].includes(s)
+  ) {
     return false;
   }
   if (["true", "yes", "negotiable"].includes(s)) return true;
@@ -252,7 +258,8 @@ export function normalizeMagicFillPayload(raw, sourceText = "") {
 
   const deal = pickEnum(raw.deal, DEAL, "Rent");
   const areaRaw = raw.area && typeof raw.area === "object" ? raw.area : {};
-  const locRaw = raw.location && typeof raw.location === "object" ? raw.location : {};
+  const locRaw =
+    raw.location && typeof raw.location === "object" ? raw.location : {};
 
   const facilitiesRaw =
     raw.facilities && typeof raw.facilities === "object" ? raw.facilities : {};
@@ -308,6 +315,22 @@ export function normalizeMagicFillPayload(raw, sourceText = "") {
     area: {
       value: toInt(areaRaw.value ?? areaRaw.size ?? raw.sqft, 0),
       unit: pickEnum(areaRaw.unit, AREA_UNITS, "sqft"),
+      carpetArea: {
+        value: toOptPositiveNumber(areaRaw.carpetArea?.value ?? areaRaw.carpet),
+        unit: areaRaw.carpetArea?.unit
+          ? pickEnum(areaRaw.carpetArea.unit, AREA_UNITS, "sqft")
+          : undefined,
+      },
+      superBuiltUpArea: {
+        value: toOptPositiveNumber(
+          areaRaw.superBuiltUpArea?.value ??
+            areaRaw.superBuiltUp ??
+            areaRaw.builtup,
+        ),
+        unit: areaRaw.superBuiltUpArea?.unit
+          ? pickEnum(areaRaw.superBuiltUpArea.unit, AREA_UNITS, "sqft")
+          : undefined,
+      },
     },
     location,
     facilities,
@@ -323,6 +346,20 @@ export function normalizeMagicFillPayload(raw, sourceText = "") {
     reraNumber: String(raw.reraNumber ?? raw.rera ?? "").trim(),
     virtualTourUrl: String(raw.virtualTourUrl ?? "").trim(),
     videoUrl: String(raw.videoUrl ?? raw.video ?? "").trim(),
+    constructionStatus: raw.constructionStatus
+      ? {
+          percentageComplete: toOptPositiveNumber(
+            raw.constructionStatus.percentageComplete ??
+              raw.constructionStatus.percentage,
+          ),
+          currentPhase: raw.constructionStatus.currentPhase
+            ? String(raw.constructionStatus.currentPhase).trim()
+            : undefined,
+          expectedOCDate: raw.constructionStatus.expectedOCDate
+            ? new Date(raw.constructionStatus.expectedOCDate)
+            : undefined,
+        }
+      : undefined,
     nearbyPlaces: normalizeNearbyPlaces(raw.nearbyPlaces),
     commercialPropertyTypes: splitList(raw.commercialPropertyTypes),
     investmentOptions: splitList(raw.investmentOptions),

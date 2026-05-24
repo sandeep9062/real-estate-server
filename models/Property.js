@@ -12,6 +12,7 @@ const locationSchema = new mongoose.Schema({
   country: { type: String, trim: true },
   slug: { type: String, unique: true, sparse: true, trim: true },
   pincode: { type: String, trim: true },
+  landmark: { type: String, trim: true },
   coordinates: {
     type: { type: String, enum: ["Point"], default: "Point" },
     coordinates: { type: [Number], default: [0, 0] },
@@ -42,6 +43,9 @@ const propertySchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+
+    seoTitle: { type: String, trim: true },
+    seoDescription: { type: String, trim: true },
 
     ai: {
       description: String,
@@ -78,11 +82,30 @@ const propertySchema = new mongoose.Schema(
       index: true,
     },
 
+    /** Area is now split into carpetArea and superBuiltUpArea for RERA compliance.
+     *  The legacy `area` field is kept as a top-level convenience for backward
+     *  compatibility with existing data that hasn't been migrated yet. */
     area: {
       value: { type: Number, min: 0, index: true },
       unit: {
         type: String,
         enum: ["sqft", "sqyard", "sqm", "marla", "kanal", "acre"],
+      },
+      /** Carpet area (as mandated by RERA) — the net usable floor area. */
+      carpetArea: {
+        value: { type: Number, min: 0 },
+        unit: {
+          type: String,
+          enum: ["sqft", "sqyard", "sqm", "marla", "kanal", "acre"],
+        },
+      },
+      /** Super built-up area — includes common areas, walls, etc. Builders typically quote this. */
+      superBuiltUpArea: {
+        value: { type: Number, min: 0 },
+        unit: {
+          type: String,
+          enum: ["sqft", "sqyard", "sqm", "marla", "kanal", "acre"],
+        },
       },
     },
 
@@ -94,6 +117,16 @@ const propertySchema = new mongoose.Schema(
       type: String,
       enum: ["Ready to Move", "Under Construction"],
       index: true,
+    },
+
+    /** Detailed construction status breakdown — only relevant when availability is "Under Construction". */
+    constructionStatus: {
+      /** Percentage of construction completed (0–100). */
+      percentageComplete: { type: Number, min: 0, max: 100 },
+      /** Current phase of construction (e.g. "Foundation", "Structure", "Finishing", "Handover"). */
+      currentPhase: { type: String, trim: true },
+      /** Expected date of Occupancy Certificate. */
+      expectedOCDate: { type: Date },
     },
 
     availableFrom: Date,
@@ -113,6 +146,19 @@ const propertySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+
+    tenantPreference: {
+      type: String,
+      enum: ["Family", "Bachelors", "Any", "Working Professionals"],
+      default: "Any",
+    },
+
+    petsAllowed: {
+      type: Boolean,
+      default: false,
+    },
+
+    tags: [{ type: String, trim: true }],
 
     price: { type: Number, min: 0, required: true, index: true },
 
