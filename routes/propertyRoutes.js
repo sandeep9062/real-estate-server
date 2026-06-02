@@ -34,7 +34,7 @@ router.get("/stats/hero", getHeroStats);
 router.get("/sitemap-data", getPropertiesForSitemap);
 router
   .route("/")
-  .get(getProperties)
+  .get(optionalAuth, getProperties)
   .post(protect, propertyUpload, createProperty);
 
 router.get("/compare", getCompareProperties);

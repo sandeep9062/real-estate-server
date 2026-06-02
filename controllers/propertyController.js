@@ -270,13 +270,22 @@ const getProperties = asyncHandler(async (req, res) => {
     query.price = { ...(query.price || {}), $gte: Number(minVal) };
   }
 
-  // Enforce security: base active status
-  query.isActive = true;
+  // Enforce security: base active status (allow admin to see inactive via includeInactive param)
+  if (
+    req.user &&
+    req.user.role === "admin" &&
+    req.query.includeInactive === "true"
+  ) {
+    // Admin can see both active and inactive properties
+  } else {
+    query.isActive = true;
+  }
   query.deletedAt = null;
 
-  // Pagination: default page=1, limit=20, max limit=100
+  // Pagination: default page=1, limit=20, max limit=1000 for admin, 100 for public
   const page = Math.max(1, parseInt(req.query.page, 12) || 1);
-  const limit = Math.min(parseInt(req.query.limit, 12) || 20, 100);
+  const maxLimit = req.user && req.user.role === "admin" ? 1000 : 100;
+  const limit = Math.min(parseInt(req.query.limit, 12) || 20, maxLimit);
   const skip = (page - 1) * limit;
 
   // ── Debug logging ──
