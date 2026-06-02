@@ -283,9 +283,9 @@ const getProperties = asyncHandler(async (req, res) => {
   query.deletedAt = null;
 
   // Pagination: default page=1, limit=20, max limit=1000 for admin, 100 for public
-  const page = Math.max(1, parseInt(req.query.page, 12) || 1);
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
   const maxLimit = req.user && req.user.role === "admin" ? 1000 : 100;
-  const limit = Math.min(parseInt(req.query.limit, 12) || 20, maxLimit);
+  const limit = Math.min(parseInt(req.query.limit, 10) || 20, maxLimit);
   const skip = (page - 1) * limit;
 
   // ── Debug logging ──
