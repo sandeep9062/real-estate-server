@@ -8,8 +8,12 @@ export const getDevelopers = async (req, res) => {
     const { featured, status } = req.query;
     const filter = {};
     if (featured === "true") filter.featured = true;
-    if (status) filter.status = status;
-    else filter.status = "active";
+    if (status) {
+      filter.status = status;
+    } else {
+      // Show active developers OR any developer without a status field (legacy records)
+      filter.$or = [{ status: "active" }, { status: { $exists: false } }];
+    }
 
     const developers = await Developer.find(filter).sort({ name: 1 }).lean();
 

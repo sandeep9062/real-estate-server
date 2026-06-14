@@ -29,6 +29,7 @@ import visitReviewRoutes from "./routes/visitReviewRoutes.js";
 import developerRoutes from "./routes/developerRoutes.js";
 import projectRoutes from "./routes/projectRoutes.js";
 import journalRoutes from "./routes/journalRoutes.js";
+import agentRoutes from "./routes/agentRoutes.js";
 
 //import migrationRoutes from "./routes/migration.js";
 
@@ -101,6 +102,8 @@ app.use("/api/properties", propertyRoutes);
 app.use("/api/saved-searches", savedSearchRoutes);
 app.use("/api/visit-reviews", visitReviewRoutes);
 app.use("/api/v1/journals", journalRoutes);
+app.use("/api/agents", agentRoutes);
+
 app.use("/api/v1/contacts", contactRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/dashboard", dashboardRoutes);

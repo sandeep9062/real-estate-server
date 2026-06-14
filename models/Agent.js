@@ -14,6 +14,8 @@ const agentSchema = new mongoose.Schema(
     bio: { type: String, trim: true }, // Short bio for cards
     longBio: { type: String, trim: true }, // Detailed bio for profile page
 
+    agencyName: { type: String, trim: true },
+
     // Contact
     phone: { type: String, trim: true },
     whatsapp: { type: String, trim: true },
@@ -66,9 +68,6 @@ const agentSchema = new mongoose.Schema(
     // SEO
     metaTitle: { type: String },
     metaDescription: { type: String },
-
-    // Link to the User account that manages this agent profile
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   {
     timestamps: true, // createdAt, updatedAt
@@ -76,14 +75,13 @@ const agentSchema = new mongoose.Schema(
 );
 
 // Auto-generate slug from name before saving
-agentSchema.pre("save", function (next) {
+agentSchema.pre("save", function () {
   if (this.isModified("name") && !this.slug) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
   }
-  next();
 });
 
 // Index for faster queries
