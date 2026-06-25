@@ -63,6 +63,8 @@ const allowedOrigins = [
   // Flutter mobile app origins (for API calls from mobile)
   "http://localhost:9000", // iOS simulator / web
   "http://10.0.2.2:9000", // Android emulator
+  // Flutter web development ports
+  "http://localhost:53105", // Flutter web (current port from error)
   // Add production frontend URL from environment variable
   process.env.FRONTEND_URL,
   process.env.SERVER_URL,
@@ -71,7 +73,13 @@ const allowedOrigins = [
 app.use(
   cors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      // Allow all localhost origins for development
+      if (
+        !origin ||
+        allowedOrigins.indexOf(origin) !== -1 ||
+        origin.startsWith("http://localhost:") ||
+        origin.startsWith("http://127.0.0.1:")
+      ) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));

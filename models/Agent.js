@@ -85,7 +85,6 @@ agentSchema.pre("save", function () {
 });
 
 // Index for faster queries
-agentSchema.index({ slug: 1 });
 agentSchema.index({ status: 1, verified: 1, featured: 1 });
 agentSchema.index({ locations: 1 });
 agentSchema.index({ specialisations: 1 });

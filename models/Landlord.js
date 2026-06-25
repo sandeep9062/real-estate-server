@@ -114,7 +114,6 @@ landlordSchema.pre("save", function (next) {
 });
 
 // Indexes for faster queries
-landlordSchema.index({ slug: 1 });
 landlordSchema.index({ status: 1, isVerified: 1 });
 landlordSchema.index({ city: 1 });
 landlordSchema.index({ locations: 1 });

@@ -118,7 +118,6 @@ roommateSchema.pre("save", function (next) {
 });
 
 // Structural Compound Database Indexing for High-Speed Filtering Queries
-roommateSchema.index({ slug: 1 });
 roommateSchema.index({ status: 1, verified: 1 });
 roommateSchema.index({ "lifestyle.dietary": 1, "lifestyle.profession": 1 });
 roommateSchema.index({ cities: 1, approxBudget: 1 });
