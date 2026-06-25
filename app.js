@@ -31,6 +31,7 @@ import projectRoutes from "./routes/projectRoutes.js";
 import journalRoutes from "./routes/journalRoutes.js";
 import agentRoutes from "./routes/agentRoutes.js";
 import landlordRoutes from "./routes/landlordRoutes.js";
+import roommateRoutes from "./routes/roommateRoutes.js";
 
 //import migrationRoutes from "./routes/migration.js";
 
@@ -53,13 +54,18 @@ app.set("trust proxy", 1);
 app.use(cookieParser());
 
 const allowedOrigins = [
+  // Web frontends
   "http://localhost:3000",
   "http://localhost:3001",
   "https://dashboard.propertybulbul.com",
   "https://www.propertybulbul.com",
   "https://propertybulbul.com",
+  // Flutter mobile app origins (for API calls from mobile)
+  "http://localhost:9000", // iOS simulator / web
+  "http://10.0.2.2:9000", // Android emulator
   // Add production frontend URL from environment variable
   process.env.FRONTEND_URL,
+  process.env.SERVER_URL,
 ].filter(Boolean); // Remove any undefined values
 
 app.use(
@@ -105,6 +111,7 @@ app.use("/api/visit-reviews", visitReviewRoutes);
 app.use("/api/v1/journals", journalRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/landlords", landlordRoutes);
+app.use("/api/roommates", roommateRoutes);
 
 app.use("/api/v1/contacts", contactRoutes);
 app.use("/api/bookings", bookingRoutes);
