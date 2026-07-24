@@ -1,4 +1,5 @@
 import User from "../models/User.js";
+import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
 import { createNotification } from "./notificationController.js";
 import {
@@ -14,7 +15,25 @@ import { transformPropertyCoordinates } from "../utils/propertyFilter.js";
 
 export const getUsers = async (req, res) => {
   const users = await User.find({});
-  res.json(users);
+
+  // Attach property count for each user
+  const userIds = users.map((u) => u._id);
+  const propertyCounts = await Property.aggregate([
+    { $match: { user: { $in: userIds }, deletedAt: null } },
+    { $group: { _id: "$user", count: { $sum: 1 } } },
+  ]);
+  const countMap = {};
+  for (const entry of propertyCounts) {
+    countMap[entry._id.toString()] = entry.count;
+  }
+
+  const usersWithCount = users.map((u) => {
+    const obj = u.toObject();
+    obj.propertyCount = countMap[u._id.toString()] || 0;
+    return obj;
+  });
+
+  res.json(usersWithCount);
 };
 
 // Helper function to check if a string is a valid MongoDB ObjectId
