@@ -66,10 +66,11 @@ const main = async () => {
     );
 
   // 3. Fixtures
-  const [agent1, agent2, buyer] = await User.create([
+  const [agent1, agent2, buyer, admin] = await User.create([
     { name: "Agent One", email: "agent1@smoke.test", role: "agent", phone: "9876500011" },
     { name: "Agent Two", email: "agent2@smoke.test", role: "agent" },
     { name: "Buyer Bob", email: "buyer@smoke.test", role: "user", phone: "9876500022" },
+    { name: "Site Admin", email: "admin@smoke.test", role: "admin" },
   ]);
 
   const [property1, property2] = await Property.create([
@@ -98,6 +99,7 @@ const main = async () => {
   const agent1Token = signToken(agent1);
   const agent2Token = signToken(agent2);
   const buyerToken = signToken(buyer);
+  const adminToken = signToken(admin);
 
   const call = async (method, path, { body, token } = {}) => {
     const res = await fetch(`${base}${path}`, {
@@ -311,6 +313,52 @@ const main = async () => {
     await lead.save();
     const stale = await Lead.findById(leadId).lean();
     assert.ok(Date.now() - new Date(stale.lastActivityAt).getTime() > 4 * 24 * 60 * 60 * 1000);
+  });
+
+  console.log("\n— GET /api/leads/admin/all (admin dashboard) —");
+  await check("admin sees leads from ALL agents with populated agent+property", async () => {
+    // Ensure agent2 has a lead too (fixture above only created leads for agent1).
+    await call("POST", "/", { body: { propertyId: property2._id.toString() } });
+    const { status, json } = await call("GET", "/admin/all", { token: adminToken });
+    assert.equal(status, 200, `status=${status} body=${JSON.stringify(json)}`);
+    assert.equal(json.success, true);
+    // agent1 has 3+ leads, agent2 has at least 1 → must exceed any single agent's list
+    assert.ok(json.count >= 4, `expected >=4 leads across agents, got ${json.count}`);
+    const byAgent = new Set(json.data.map((l) => l.agent?.name));
+    assert.ok(byAgent.has("Agent One"), "Agent One leads should be present");
+    assert.ok(byAgent.has("Agent Two"), "Agent Two leads should be present");
+    const withProperty = json.data.find((l) => l.property?.title);
+    assert.ok(withProperty, "property should be populated");
+    assert.ok(withProperty.buyer !== undefined, "normalized buyer object should exist");
+  });
+
+  await check("admin filter by status works", async () => {
+    const { status, json } = await call("GET", "/admin/all?status=Contacted", { token: adminToken });
+    assert.equal(status, 200);
+    assert.ok(json.count >= 1);
+    json.data.forEach((l) => assert.equal(l.status, "Contacted"));
+  });
+
+  await check("admin filter by source + invalid source 400", async () => {
+    const ok = await call("GET", "/admin/all?source=whatsapp_click", { token: adminToken });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.json.count, ok.json.data.length);
+    ok.json.data.forEach((l) => assert.equal(l.source, "whatsapp_click"));
+
+    const bad = await call("GET", "/admin/all?source=PIGEON", { token: adminToken });
+    assert.equal(bad.status, 400);
+  });
+
+  await check("admin filter by agentId matches agent+legacy broker leads", async () => {
+    const { status, json } = await call("GET", `/admin/all?agentId=${agent1._id}`, { token: adminToken });
+    assert.equal(status, 200);
+    assert.ok(json.count >= 1);
+    json.data.forEach((l) => assert.equal(l.agent?._id, String(agent1._id)));
+  });
+
+  await check("agent gets 403 on admin endpoint, anon gets 401", async () => {
+    assert.equal((await call("GET", "/admin/all", { token: agent1Token })).status, 403);
+    assert.equal((await call("GET", "/admin/all")).status, 401);
   });
 
   console.log(`\n=== RESULTS: ${passed} passed, ${failed} failed ===`);

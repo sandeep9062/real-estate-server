@@ -128,6 +128,95 @@ export const getLeads = asyncHandler(async (req, res) => {
 });
 
 /**
+ * @desc    Get ALL leads across the platform (admin view).
+ *          Returns both CRM (WhatsApp-click) leads and legacy brochure leads.
+ * @route   GET /api/leads/admin/all
+ * @access  Private/Admin
+ * @query   status, source, type, agentId, sortBy, sortOrder
+ */
+export const getAllLeads = asyncHandler(async (req, res) => {
+  const {
+    status,
+    source,
+    type,
+    agentId,
+    sortBy = "createdAt",
+    sortOrder = "desc",
+  } = req.query || {};
+
+  const query = {};
+
+  if (status) {
+    if (!LEAD_STATUSES.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid status. Allowed: ${LEAD_STATUSES.join(", ")}`,
+      });
+    }
+    query.status = status;
+  }
+
+  if (source) {
+    if (!LEAD_SOURCES.includes(source)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid source. Allowed: ${LEAD_SOURCES.join(", ")}`,
+      });
+    }
+    query.source = source;
+  }
+
+  if (type) {
+    if (!LEAD_TYPES.includes(type)) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid type. Allowed: ${LEAD_TYPES.join(", ")}`,
+      });
+    }
+    query.type = type;
+  }
+
+  if (agentId) {
+    if (!mongoose.isValidObjectId(agentId)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid agentId",
+      });
+    }
+    // Legacy brochure leads store the owner in brokerId — match either.
+    query.$or = [{ agentId }, { brokerId: agentId }];
+  }
+
+  const sortField = LEAD_SORT_FIELDS.has(sortBy) ? sortBy : "createdAt";
+  const sortDirection = sortOrder === "asc" ? 1 : -1;
+
+  const leads = await Lead.find(query)
+    .sort({ [sortField]: sortDirection })
+    .populate("propertyId", "title slug image deal price location status")
+    .populate("agentId", "name email phone role")
+    .populate("brokerId", "name email phone role")
+    .lean();
+
+  // Normalize: expose `agent` (agentId or legacy brokerId) and `property`.
+  const data = leads.map((lead) => ({
+    ...lead,
+    id: lead._id.toString(),
+    property: lead.propertyId,
+    propertyId: undefined,
+    agent: lead.agentId || lead.brokerId || null,
+    agentId: undefined,
+    brokerId: undefined,
+    // Surface buyer info from whichever field the lead kind uses.
+    buyer: {
+      name: lead.buyerName || lead.userName || null,
+      phone: lead.buyerPhone || lead.userPhone || null,
+    },
+  }));
+
+  res.json({ success: true, count: data.length, data });
+});
+
+/**
  * @desc    Update a lead's status and/or notes (agent-only, ownership verified)
  * @route   PATCH /api/leads/:id
  * @access  Private (agent/admin)

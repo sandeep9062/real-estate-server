@@ -5,6 +5,7 @@ import {
   getLeads,
   updateLead,
   getLeadStats,
+  getAllLeads,
 } from "../controllers/leadController.js";
 import {
   protect,
@@ -33,6 +34,10 @@ router
   .route("/")
   .post(leadCreateLimiter, optionalAuth, createLead)
   .get(protect, requireRole(["agent", "admin"]), getLeads);
+
+// Admin: all leads across the platform (both WhatsApp-click and brochure leads).
+// Declared before /:id routes so it is never captured as an id.
+router.get("/admin/all", protect, requireRole(["admin"]), getAllLeads);
 
 // Keep /stats before any /:id route so it is never captured as an id.
 router.get("/stats", protect, requireRole(["agent", "admin"]), getLeadStats);
