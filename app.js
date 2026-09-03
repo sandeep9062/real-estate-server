@@ -32,6 +32,7 @@ import journalRoutes from "./routes/journalRoutes.js";
 import agentRoutes from "./routes/agentRoutes.js";
 import landlordRoutes from "./routes/landlordRoutes.js";
 import roommateRoutes from "./routes/roommateRoutes.js";
+import leadRoutes from "./routes/leadRoutes.js";
 
 //import migrationRoutes from "./routes/migration.js";
 
@@ -120,6 +121,7 @@ app.use("/api/v1/journals", journalRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/landlords", landlordRoutes);
 app.use("/api/roommates", roommateRoutes);
+app.use("/api/leads", leadRoutes);
 
 app.use("/api/v1/contacts", contactRoutes);
 app.use("/api/bookings", bookingRoutes);
