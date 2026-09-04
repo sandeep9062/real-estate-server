@@ -1,4 +1,6 @@
 import User from "../models/User.js";
+import Agent from "../models/Agent.js";
+import Landlord from "../models/Landlord.js";
 import { OAuth2Client } from "google-auth-library";
 import {
   generateAccessToken,
@@ -314,6 +316,111 @@ export const getCurrentUser = async (userId) => {
   }
 
   return user.toJSON();
+};
+
+/**
+ * Ensure an Agent profile doc exists for a user.
+ *
+ * Idempotent: if a doc already exists (e.g. created via the old public
+ * /api/agents/register wizard), it is returned untouched — no fields are
+ * overwritten. Used by select-role and as the lazy fallback on profile fetch.
+ */
+export const ensureAgentProfile = async (user) => {
+  let agent = await Agent.findOne({ userID: user._id });
+  if (!agent) {
+    agent = await Agent.create({
+      userID: user._id,
+      name: user.name,
+      phone: user.phone || "",
+      email: user.email,
+    });
+  }
+  return agent;
+};
+
+/**
+ * Ensure a Landlord profile doc exists for a user (same idempotency rules).
+ */
+export const ensureLandlordProfile = async (user) => {
+  let landlord = await Landlord.findOne({ userID: user._id });
+  if (!landlord) {
+    landlord = await Landlord.create({
+      userID: user._id,
+      name: user.name,
+      phone: user.phone || "",
+      email: user.email,
+    });
+  }
+  return landlord;
+};
+
+/**
+ * Select a role (agent | landlord) for a user who hasn't picked one yet.
+ *
+ * - Rejects invalid roles (400) and users who already have a role (409).
+ *   admin/builder accounts are also rejected — this endpoint must never
+ *   demote a privileged role.
+ * - Sets user.role, then idempotently creates the matching profile doc
+ *   (findOne-then-create; existing docs are never overwritten).
+ * - Returns the updated user + a fresh access token reflecting the new role
+ *   (role is embedded in the JWT payload).
+ *
+ * Note: the codebase does not use Mongo transactions anywhere, so steps run
+ * sequentially. If profile creation fails after the role was saved, the error
+ * is logged loudly with `roleSaved: true` — the profile is re-created lazily
+ * on the next GET /api/agents/me or /api/landlords/me call, so the user is
+ * not stuck.
+ */
+export const selectUserRole = async (userId, role) => {
+  if (!role || !["agent", "landlord"].includes(role)) {
+    const error = new Error("Invalid role. Must be 'agent' or 'landlord'.");
+    error.statusCode = 400;
+    throw error;
+  }
+
+  const user = await User.findById(userId);
+  if (!user) {
+    const error = new Error("User not found");
+    error.statusCode = 404;
+    throw error;
+  }
+
+  if (user.role !== "user") {
+    const isPickedRole = user.role === "agent" || user.role === "landlord";
+    const error = new Error(
+      isPickedRole
+        ? "You have already selected a role. Role switching is handled by support."
+        : `Role selection is not available for '${user.role}' accounts.`,
+    );
+    error.statusCode = 409;
+    throw error;
+  }
+
+  // Step 1: set the role
+  user.role = role;
+  await user.save();
+
+  // Step 2: create (or reuse) the profile doc
+  try {
+    const profile =
+      role === "agent"
+        ? await ensureAgentProfile(user)
+        : await ensureLandlordProfile(user);
+
+    const accessToken = generateAccessToken(user);
+
+    return { user: user.toJSON(), profile, accessToken };
+  } catch (error) {
+    console.error(
+      `❌ selectUserRole: role '${role}' saved for user ${user._id} (${user.email}) but profile creation failed: ${error.message}`,
+    );
+    const wrapped = new Error(
+      "Your role was updated but we couldn't finish setting up your profile. It will be created automatically next time you open your dashboard — please try again.",
+    );
+    wrapped.statusCode = 500;
+    wrapped.roleSaved = true;
+    throw wrapped;
+  }
 };
 
 /**

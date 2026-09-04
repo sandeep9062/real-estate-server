@@ -1,5 +1,10 @@
 import User from "../models/User.js";
 import Landlord from "../models/Landlord.js";
+import {
+  getProfileCompleteness,
+  LANDLORD_PROFILE_FIELDS,
+} from "../utils/profileCompleteness.js";
+import { ensureLandlordProfile } from "../auth/auth.service.js";
 
 /**
  * @desc    Register a new landlord
@@ -170,6 +175,61 @@ export const registerLandlord = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong. Please try again later.",
+    });
+  }
+};
+
+/**
+ * @desc    Get the logged-in landlord's own profile (with profileCompleteness)
+ * @route   GET /api/landlords/me
+ * @access  Private
+ *
+ * Lazily (re-)creates the Landlord doc if the user's role is "landlord" but
+ * the doc is missing (fallback for a select-role failure after role save).
+ * Returns 404 if the user isn't a landlord (admins without a Landlord doc
+ * also get 404 — we never auto-create profiles for admins).
+ */
+export const getMyLandlordProfile = async (req, res) => {
+  try {
+    if (req.user.role !== "landlord" && req.user.role !== "admin") {
+      return res.status(404).json({
+        success: false,
+        message: "No landlord profile found.",
+      });
+    }
+
+    let landlord = await Landlord.findOne({ userID: req.user._id });
+
+    if (!landlord && req.user.role === "landlord") {
+      // Lazy fallback: role was saved but the profile doc is missing.
+      console.warn(
+        `⚠️ Landlord doc missing for user ${req.user._id} (role=landlord) — creating lazily.`,
+      );
+      landlord = await ensureLandlordProfile(req.user);
+    }
+
+    if (!landlord) {
+      return res.status(404).json({
+        success: false,
+        message: "No landlord profile found.",
+      });
+    }
+
+    const landlordData = landlord.toJSON();
+    landlordData.profileCompleteness = getProfileCompleteness(
+      landlordData,
+      LANDLORD_PROFILE_FIELDS,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: landlordData,
+    });
+  } catch (error) {
+    console.error("Get my landlord profile error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch landlord profile.",
     });
   }
 };

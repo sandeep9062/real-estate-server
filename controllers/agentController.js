@@ -1,5 +1,10 @@
 import User from "../models/User.js";
 import Agent from "../models/Agent.js";
+import {
+  getProfileCompleteness,
+  AGENT_PROFILE_FIELDS,
+} from "../utils/profileCompleteness.js";
+import { ensureAgentProfile } from "../auth/auth.service.js";
 
 /**
  * @desc    Register a new agent (public registration)
@@ -188,6 +193,61 @@ export const registerAgent = async (req, res) => {
     res.status(500).json({
       success: false,
       message: "Something went wrong. Please try again later.",
+    });
+  }
+};
+
+/**
+ * @desc    Get the logged-in agent's own profile (with profileCompleteness)
+ * @route   GET /api/agents/me
+ * @access  Private
+ *
+ * Lazily (re-)creates the Agent doc if the user's role is "agent" but the doc
+ * is missing (fallback for a select-role failure after the role was saved).
+ * Returns 404 if the user isn't an agent (admins without an Agent doc also
+ * get 404 — we never auto-create profiles for admins).
+ */
+export const getMyAgentProfile = async (req, res) => {
+  try {
+    if (req.user.role !== "agent" && req.user.role !== "admin") {
+      return res.status(404).json({
+        success: false,
+        message: "No agent profile found.",
+      });
+    }
+
+    let agent = await Agent.findOne({ userID: req.user._id });
+
+    if (!agent && req.user.role === "agent") {
+      // Lazy fallback: role was saved but the profile doc is missing.
+      console.warn(
+        `⚠️ Agent doc missing for user ${req.user._id} (role=agent) — creating lazily.`,
+      );
+      agent = await ensureAgentProfile(req.user);
+    }
+
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        message: "No agent profile found.",
+      });
+    }
+
+    const agentData = agent.toJSON();
+    agentData.profileCompleteness = getProfileCompleteness(
+      agentData,
+      AGENT_PROFILE_FIELDS,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: agentData,
+    });
+  } catch (error) {
+    console.error("Get my agent profile error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch agent profile.",
     });
   }
 };

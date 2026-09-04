@@ -3,6 +3,7 @@ import {
   registerLandlord,
   getLandlords,
   getLandlordById,
+  getMyLandlordProfile,
   updateLandlord,
   deleteLandlord,
   uploadDocument,
@@ -12,6 +13,7 @@ import {
   toggleFeatured,
   updateStatus,
 } from "../controllers/landlordController.js";
+import { protect } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multer.js";
 
 const router = express.Router();
@@ -19,6 +21,11 @@ const router = express.Router();
 // Public routes
 router.post("/register", upload.single("photo"), registerLandlord);
 router.get("/", getLandlords);
+
+// Protected route — MUST be declared before /:identifier so "me" isn't
+// captured as an identifier.
+router.get("/me", protect, getMyLandlordProfile);
+
 router.get("/:identifier", getLandlordById);
 
 // Protected routes (profile management)

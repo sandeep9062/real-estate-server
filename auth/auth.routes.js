@@ -8,6 +8,7 @@ import {
   logout,
   logoutAll,
   getCurrentUser,
+  selectRole,
   banUser,
   unbanUser,
 } from "./auth.controller.js";
@@ -85,6 +86,9 @@ router.post("/logout", logout);
 
 // GET /auth/me - Get current user
 router.get("/me", requireAuth, getCurrentUser);
+
+// POST /auth/select-role - Pick agent/landlord role (one-time, for new users)
+router.post("/select-role", requireAuth, selectRole);
 
 // POST /auth/logout-all - Logout from all devices
 router.post("/logout-all", requireAuth, logoutAll);

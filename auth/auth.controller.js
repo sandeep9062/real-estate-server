@@ -269,6 +269,45 @@ export const logoutAll = async (req, res) => {
 };
 
 /**
+ * Select a role (agent | landlord)
+ * POST /auth/select-role (protected)
+ *
+ * For users with role "user" who haven't picked agent/landlord yet.
+ * Returns the updated user + a fresh access token reflecting the new role
+ * (role is embedded in the JWT), and refreshes the access-token cookie.
+ */
+export const selectRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+
+    const result = await authService.selectUserRole(req.user._id, role);
+
+    // Refresh the access-token cookie so it carries the new role claim
+    res.cookie(
+      "accessToken",
+      result.accessToken,
+      getAccessTokenCookieOptions(),
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `You are now registered as a ${result.user.role}.`,
+      user: result.user,
+      profile: result.profile,
+      token: result.accessToken, // Fresh token for frontend fallback
+    });
+  } catch (error) {
+    console.error("Select role error:", error.message);
+
+    res.status(error.statusCode || 500).json({
+      success: false,
+      message: error.message || "Failed to select role",
+      roleSaved: Boolean(error.roleSaved),
+    });
+  }
+};
+
+/**
  * Get current user
  * GET /auth/me
  */

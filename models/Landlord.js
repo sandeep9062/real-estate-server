@@ -5,6 +5,8 @@ const landlordSchema = new mongoose.Schema(
     userID: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      required: true,
+      unique: true, // One Landlord doc per User (prevents duplicates from double submits/retries)
     },
     // Basic Profile
     name: { type: String, required: true, trim: true },
@@ -103,21 +105,22 @@ const landlordSchema = new mongoose.Schema(
 );
 
 // Auto-generate slug from name before saving
-landlordSchema.pre("save", function (next) {
+// (mongoose 9 removed callback-style hooks — must be a sync/async fn without `next`)
+landlordSchema.pre("save", function () {
   if (this.isModified("name") && !this.slug) {
     this.slug = this.name
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, "-")
       .replace(/(^-|-$)/g, "");
   }
-  next();
 });
 
 // Indexes for faster queries
 landlordSchema.index({ status: 1, isVerified: 1 });
 landlordSchema.index({ city: 1 });
 landlordSchema.index({ locations: 1 });
-landlordSchema.index({ userID: 1 });
+// Note: userID no longer needs a manual index — the `unique: true` on the
+// userID field itself creates one (duplicate index triggered a mongoose warning).
 
 // Transform output (remove __v, hide sensitive bank details)
 landlordSchema.methods.toJSON = function () {

@@ -6,6 +6,7 @@ const agentSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      unique: true, // One Agent doc per User (prevents duplicates from double submits/retries)
     },
     // Basic Profile
     name: { type: String, required: true, trim: true },
