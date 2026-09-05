@@ -251,3 +251,124 @@ export const getMyAgentProfile = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Update the logged-in agent's own profile (partial updates allowed)
+ * @route   PUT /api/agents/me
+ * @access  Private
+ *
+ * Accepts JSON or multipart (optional `photo` file for the avatar). Only the
+ * fields present in the request body are changed — no full wizard payload
+ * required. Unknown/forbidden fields (name, email, userID, verification,
+ * stats...) are ignored. Scoped to the requester via req.user._id.
+ */
+const AGENT_EDITABLE_STRING_FIELDS = [
+  "title",
+  "phone",
+  "whatsapp",
+  "agencyName",
+  "bio",
+  "rera",
+];
+const AGENT_EDITABLE_ARRAY_FIELDS = ["locations", "specialisations", "languages"];
+
+export const updateMyAgentProfile = async (req, res) => {
+  try {
+    if (req.user.role !== "agent" && req.user.role !== "admin") {
+      return res.status(404).json({
+        success: false,
+        message: "No agent profile found.",
+      });
+    }
+
+    let agent = await Agent.findOne({ userID: req.user._id });
+    if (!agent) {
+      if (req.user.role === "agent") {
+        console.warn(
+          `⚠️ Agent doc missing for user ${req.user._id} (role=agent) — creating lazily on update.`,
+        );
+        agent = await ensureAgentProfile(req.user);
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "No agent profile found.",
+        });
+      }
+    }
+
+    let updatesApplied = 0;
+
+    // Simple string fields — only set when provided in the body
+    for (const field of AGENT_EDITABLE_STRING_FIELDS) {
+      if (req.body[field] !== undefined && req.body[field] !== null) {
+        const value = String(req.body[field]).trim();
+        agent[field] = value;
+        updatesApplied += 1;
+      }
+    }
+
+    // Array fields — accept a real array or a JSON-encoded string (FormData)
+    for (const field of AGENT_EDITABLE_ARRAY_FIELDS) {
+      let value = req.body[field];
+      if (value === undefined || value === null) continue;
+
+      if (typeof value === "string") {
+        try {
+          value = JSON.parse(value);
+        } catch {
+          value = [value];
+        }
+      }
+      if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for "${field}" — expected an array of strings.`,
+        });
+      }
+      agent[field] = value.map((v) => v.trim()).filter(Boolean);
+      updatesApplied += 1;
+    }
+
+    // Optional avatar upload (multipart `photo`), same convention as the wizard
+    if (req.file?.path) {
+      agent.avatar = req.file.path;
+      updatesApplied += 1;
+    }
+
+    if (updatesApplied === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No editable fields were provided.",
+      });
+    }
+
+    await agent.save();
+
+    const agentData = agent.toJSON();
+    agentData.profileCompleteness = getProfileCompleteness(
+      agentData,
+      AGENT_PROFILE_FIELDS,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Agent profile updated.",
+      data: agentData,
+    });
+  } catch (error) {
+    console.error("Update my agent profile error:", error);
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(". "),
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update agent profile.",
+    });
+  }
+};

@@ -235,6 +235,130 @@ export const getMyLandlordProfile = async (req, res) => {
 };
 
 /**
+ * @desc    Update the logged-in landlord's own profile (partial updates allowed)
+ * @route   PUT /api/landlords/me
+ * @access  Private
+ *
+ * Accepts JSON or multipart (optional `photo` file for the avatar). Only the
+ * fields present in the request body are changed — no full wizard payload
+ * required. Unknown/forbidden fields (name, email, userID, verification,
+ * bankDetails, documents...) are ignored. Scoped to the requester via
+ * req.user._id — unlike PUT /api/landlords/:id which is admin/legacy.
+ */
+const LANDLORD_EDITABLE_STRING_FIELDS = [
+  "title",
+  "phone",
+  "whatsapp",
+  "bio",
+  "address",
+  "city",
+  "state",
+  "pincode",
+];
+const LANDLORD_EDITABLE_ARRAY_FIELDS = [
+  "locations",
+  "propertyTypes",
+  "languages",
+];
+
+export const updateMyLandlordProfile = async (req, res) => {
+  try {
+    if (req.user.role !== "landlord" && req.user.role !== "admin") {
+      return res.status(404).json({
+        success: false,
+        message: "No landlord profile found.",
+      });
+    }
+
+    let landlord = await Landlord.findOne({ userID: req.user._id });
+    if (!landlord) {
+      if (req.user.role === "landlord") {
+        console.warn(
+          `⚠️ Landlord doc missing for user ${req.user._id} (role=landlord) — creating lazily on update.`,
+        );
+        landlord = await ensureLandlordProfile(req.user);
+      } else {
+        return res.status(404).json({
+          success: false,
+          message: "No landlord profile found.",
+        });
+      }
+    }
+
+    let updatesApplied = 0;
+
+    for (const field of LANDLORD_EDITABLE_STRING_FIELDS) {
+      if (req.body[field] !== undefined && req.body[field] !== null) {
+        landlord[field] = String(req.body[field]).trim();
+        updatesApplied += 1;
+      }
+    }
+
+    for (const field of LANDLORD_EDITABLE_ARRAY_FIELDS) {
+      let value = req.body[field];
+      if (value === undefined || value === null) continue;
+
+      if (typeof value === "string") {
+        try {
+          value = JSON.parse(value);
+        } catch {
+          value = [value];
+        }
+      }
+      if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for "${field}" — expected an array of strings.`,
+        });
+      }
+      landlord[field] = value.map((v) => v.trim()).filter(Boolean);
+      updatesApplied += 1;
+    }
+
+    if (req.file?.path) {
+      landlord.avatar = req.file.path;
+      updatesApplied += 1;
+    }
+
+    if (updatesApplied === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No editable fields were provided.",
+      });
+    }
+
+    await landlord.save();
+
+    const landlordData = landlord.toJSON();
+    landlordData.profileCompleteness = getProfileCompleteness(
+      landlordData,
+      LANDLORD_PROFILE_FIELDS,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Landlord profile updated.",
+      data: landlordData,
+    });
+  } catch (error) {
+    console.error("Update my landlord profile error:", error);
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(". "),
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update landlord profile.",
+    });
+  }
+};
+
+/**
  * @desc    Get all landlords
  * @route   GET /api/landlords
  * @access  Public

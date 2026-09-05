@@ -4,6 +4,7 @@ import {
   getLandlords,
   getLandlordById,
   getMyLandlordProfile,
+  updateMyLandlordProfile,
   updateLandlord,
   deleteLandlord,
   uploadDocument,
@@ -22,9 +23,10 @@ const router = express.Router();
 router.post("/register", upload.single("photo"), registerLandlord);
 router.get("/", getLandlords);
 
-// Protected route — MUST be declared before /:identifier so "me" isn't
+// Protected routes — MUST be declared before /:identifier so "me" isn't
 // captured as an identifier.
 router.get("/me", protect, getMyLandlordProfile);
+router.put("/me", protect, upload.single("photo"), updateMyLandlordProfile);
 
 router.get("/:identifier", getLandlordById);
 
