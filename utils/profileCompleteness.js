@@ -28,9 +28,13 @@ export const AGENT_PROFILE_FIELDS = [
 ];
 
 export const LANDLORD_PROFILE_FIELDS = [
+  "name",
   "bio",
+  "phone",
+  "email",
   "locations",
   "propertyTypes",
   "avatar",
   "address",
+  "city",
 ];

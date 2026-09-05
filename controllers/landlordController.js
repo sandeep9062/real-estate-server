@@ -246,15 +246,20 @@ export const getMyLandlordProfile = async (req, res) => {
  * req.user._id — unlike PUT /api/landlords/:id which is admin/legacy.
  */
 const LANDLORD_EDITABLE_STRING_FIELDS = [
+  "name",
   "title",
   "phone",
   "whatsapp",
+  "email",
   "bio",
   "longBio",
   "address",
   "city",
   "state",
   "pincode",
+  "companyName",
+  "gstin",
+  "pan",
 ];
 const LANDLORD_EDITABLE_ARRAY_FIELDS = [
   "locations",
@@ -372,6 +377,21 @@ export const updateMyLandlordProfile = async (req, res) => {
 
     if (req.file?.path) {
       landlord.avatar = req.file.path;
+      updatesApplied += 1;
+    }
+
+    // Corporate landlord flag — toggles visibility of company/GST/PAN fields
+    if (req.body.isCompany !== undefined && req.body.isCompany !== null) {
+      let flag = req.body.isCompany;
+      if (flag === "true") flag = true;
+      else if (flag === "false") flag = false;
+      if (typeof flag !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid "isCompany" — expected a boolean.',
+        });
+      }
+      landlord.isCompany = flag;
       updatesApplied += 1;
     }
 
