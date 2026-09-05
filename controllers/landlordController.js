@@ -316,10 +316,17 @@ export const updateMyLandlordProfile = async (req, res) => {
       updatesApplied += 1;
     }
 
-    // Nested preferences — merged per-key so each field can be saved
-    // independently from the profile editor (contactMethod / availableTimings
-    // / acceptsVisits).
-    const preferences = req.body.preferences;
+    // Nested preferences — merged per-key so the whole form saves with one
+    // request (contactMethod / availableTimings / acceptsVisits). Also
+    // accepts a JSON-encoded string (multipart FormData path).
+    let preferences = req.body.preferences;
+    if (typeof preferences === "string") {
+      try {
+        preferences = JSON.parse(preferences);
+      } catch {
+        preferences = undefined;
+      }
+    }
     if (
       preferences &&
       typeof preferences === "object" &&
@@ -348,13 +355,17 @@ export const updateMyLandlordProfile = async (req, res) => {
       }
 
       if (acceptsVisits !== undefined && acceptsVisits !== null) {
-        if (typeof acceptsVisits !== "boolean") {
+        // FormData sends booleans as "true"/"false" strings — coerce them.
+        let flag = acceptsVisits;
+        if (flag === "true") flag = true;
+        else if (flag === "false") flag = false;
+        if (typeof flag !== "boolean") {
           return res.status(400).json({
             success: false,
             message: 'Invalid "preferences.acceptsVisits" — expected a boolean.',
           });
         }
-        landlord.preferences.acceptsVisits = acceptsVisits;
+        landlord.preferences.acceptsVisits = flag;
         updatesApplied += 1;
       }
     }
