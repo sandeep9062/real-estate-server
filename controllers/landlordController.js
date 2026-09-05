@@ -250,6 +250,7 @@ const LANDLORD_EDITABLE_STRING_FIELDS = [
   "phone",
   "whatsapp",
   "bio",
+  "longBio",
   "address",
   "city",
   "state",
@@ -313,6 +314,49 @@ export const updateMyLandlordProfile = async (req, res) => {
       }
       landlord[field] = value.map((v) => v.trim()).filter(Boolean);
       updatesApplied += 1;
+    }
+
+    // Nested preferences — merged per-key so each field can be saved
+    // independently from the profile editor (contactMethod / availableTimings
+    // / acceptsVisits).
+    const preferences = req.body.preferences;
+    if (
+      preferences &&
+      typeof preferences === "object" &&
+      !Array.isArray(preferences)
+    ) {
+      if (!landlord.preferences) landlord.preferences = {};
+      const { contactMethod, availableTimings, acceptsVisits } = preferences;
+
+      if (contactMethod !== undefined && contactMethod !== null) {
+        const method = String(contactMethod).trim();
+        if (method && !["phone", "email", "whatsapp"].includes(method)) {
+          return res.status(400).json({
+            success: false,
+            message:
+              'Invalid "preferences.contactMethod" — must be one of: phone, email, whatsapp.',
+          });
+        }
+        // Empty value clears the override — the schema default ("phone") applies.
+        landlord.preferences.contactMethod = method || undefined;
+        updatesApplied += 1;
+      }
+
+      if (availableTimings !== undefined && availableTimings !== null) {
+        landlord.preferences.availableTimings = String(availableTimings).trim();
+        updatesApplied += 1;
+      }
+
+      if (acceptsVisits !== undefined && acceptsVisits !== null) {
+        if (typeof acceptsVisits !== "boolean") {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid "preferences.acceptsVisits" — expected a boolean.',
+          });
+        }
+        landlord.preferences.acceptsVisits = acceptsVisits;
+        updatesApplied += 1;
+      }
     }
 
     if (req.file?.path) {
@@ -475,6 +519,7 @@ const OWNER_EDITABLE_FIELDS = [
   "phone",
   "whatsapp",
   "bio",
+  "longBio",
   "address",
   "city",
   "state",
@@ -482,6 +527,7 @@ const OWNER_EDITABLE_FIELDS = [
   "locations",
   "propertyTypes",
   "languages",
+  "preferences",
 ];
 
 // Extended set — admin only (identity / tax / portfolio stats / prefs / SEO).

@@ -268,9 +268,15 @@ const AGENT_EDITABLE_STRING_FIELDS = [
   "whatsapp",
   "agencyName",
   "bio",
+  "longBio",
   "rera",
 ];
-const AGENT_EDITABLE_ARRAY_FIELDS = ["locations", "specialisations", "languages"];
+const AGENT_EDITABLE_ARRAY_FIELDS = [
+  "locations",
+  "specialisations",
+  "languages",
+  "achievements",
+];
 
 export const updateMyAgentProfile = async (req, res) => {
   try {
@@ -326,6 +332,21 @@ export const updateMyAgentProfile = async (req, res) => {
         });
       }
       agent[field] = value.map((v) => v.trim()).filter(Boolean);
+      updatesApplied += 1;
+    }
+
+    // Years of experience — self-reported numeric stat (deals / responseTime /
+    // responseRate are system-computed and stay non-editable here).
+    const experience = req.body.experience;
+    if (experience !== undefined && experience !== null && experience !== "") {
+      const years = Number(experience);
+      if (!Number.isFinite(years) || years < 0 || years > 60) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid "experience" — expected a number between 0 and 60.',
+        });
+      }
+      agent.experience = Math.round(years);
       updatesApplied += 1;
     }
 
