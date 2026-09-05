@@ -150,12 +150,23 @@ const BOOKING_STATUSES = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
 // @access  Private (landlord/admin)
 const getMyPropertyBookings = async (req, res) => {
   try {
-    const ownedProperties = await Property.find({ user: req.user._id }).select('_id');
+    // Support searching by userID query param (for admin or specific user view)
+    // Default to the logged-in user's ID
+    const ownerId = req.query.userID || req.user._id;
+
+    const ownedProperties = await Property.find({ user: ownerId }).select('_id');
     const propertyIds = ownedProperties.map((p) => p._id);
+
+    if (propertyIds.length === 0) {
+      return res.json([]);
+    }
 
     const bookings = await Booking.find({ property: { $in: propertyIds } })
       .populate('user', 'name email phone')
-      .populate('property', 'title slug image deal price')
+      .populate({
+        path: 'property',
+        select: 'title slug image deal price location',
+      })
       .sort({ createdAt: -1 });
 
     res.json(bookings);
