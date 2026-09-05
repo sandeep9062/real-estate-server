@@ -160,22 +160,18 @@ const main = async () => {
     });
 
     await check(
-      "idempotent: user with an existing Agent doc (old wizard) re-selects agent without duplicates",
+      "idempotent: user with an existing Agent doc but role=user re-selects agent without duplicates",
       async () => {
-        // Simulate the old public wizard over HTTP
-        const wiz = await fetch(`${base}/agents/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: String(userC._id),
-            name: userC.name,
-            phone: "+918888888803",
-            locations: ["Chandigarh"],
-            specialisations: ["Residential"],
-            bio: "WIZARD-BIO-KEEP",
-          }),
+        // Scenario: an Agent doc already exists for this user (e.g. created by
+        // the old wizard / an admin) but user.role is still "user". We create
+        // the doc directly to simulate this (the wizard also promotes the role,
+        // which would make select-role correctly 409 — not the case under test).
+        await Agent.create({
+          userID: userC._id,
+          name: userC.name,
+          phone: "+918888888803",
+          bio: "WIZARD-BIO-KEEP",
         });
-        assert.equal(wiz.status, 201, `wizard register failed: ${await wiz.text()}`);
 
         // Now select-role — must reuse the existing doc, not create a duplicate
         const res = await fetch(`${base}/auth/select-role`, {
@@ -192,20 +188,16 @@ const main = async () => {
     );
 
     await check(
-      "idempotent: user with an existing Landlord doc (old wizard) re-selects landlord without duplicates",
+      "idempotent: user with an existing Landlord doc but role=user re-selects landlord without duplicates",
       async () => {
-        const wiz = await fetch(`${base}/landlords/register`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            userId: String(userD._id),
-            name: userD.name,
-            phone: "+917777777704",
-            bio: "WIZARD-LANDLORD-KEEP",
-            address: "12 Keep Street",
-          }),
+        await Landlord.create({
+          userID: userD._id,
+          name: userD.name,
+          email: userD.email,
+          phone: "+917777777704",
+          bio: "WIZARD-LANDLORD-KEEP",
+          address: "12 Keep Street",
         });
-        assert.equal(wiz.status, 201, `wizard register failed: ${await wiz.text()}`);
 
         const res = await fetch(`${base}/auth/select-role`, {
           method: "POST",
