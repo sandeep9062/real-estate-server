@@ -31,15 +31,15 @@ router.put("/me", protect, upload.single("photo"), updateMyLandlordProfile);
 router.get("/:identifier", getLandlordById);
 
 // Protected routes (profile management)
-router.put("/:id", upload.single("photo"), updateLandlord);
-router.post("/:id/documents", upload.single("document"), uploadDocument);
+router.put("/:id", protect, upload.single("photo"), updateLandlord);
+router.post("/:id/documents", protect, upload.single("document"), uploadDocument);
 
 // Admin routes
-router.patch("/:id/verify", verifyLandlord);
-router.patch("/:id/documents/:docId/verify", verifyDocument);
-router.put("/:id/bank-details", updateBankDetails);
-router.patch("/:id/featured", toggleFeatured);
-router.patch("/:id/status", updateStatus);
-router.delete("/:id", deleteLandlord);
+router.patch("/:id/verify", protect, verifyLandlord);
+router.patch("/:id/documents/:docId/verify", protect, verifyDocument);
+router.put("/:id/bank-details", protect, updateBankDetails);
+router.patch("/:id/featured", protect, toggleFeatured);
+router.patch("/:id/status", protect, updateStatus);
+router.delete("/:id", protect, deleteLandlord);
 
 export default router;

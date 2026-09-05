@@ -457,13 +457,66 @@ export const getLandlordById = async (req, res) => {
 /**
  * @desc    Update a landlord profile
  * @route   PUT /api/landlords/:id
- * @access  Private
+ * @access  Private (owner or admin; admin-only for extended fields)
+ *
+ * Two permission tiers:
+ *  - Owner (the User linked via `userID`) may only update the same field set
+ *    as PUT /api/landlords/me (contact / location / property-type fields).
+ *  - Admin may additionally edit extended identity/stats fields (name, email,
+ *    company/pan/gstin, portfolio counts, preferences, SEO).
+ * Non-owners are rejected with 403, and so are owner requests that include any
+ * field outside the owner-editable set (rejected outright, not silently
+ * ignored, so the caller knows the field is off-limits).
  */
+
+// Owner-editable — mirrors LANDLORD_EDITABLE_*_FIELDS in updateMyLandlordProfile.
+const OWNER_EDITABLE_FIELDS = [
+  "title",
+  "phone",
+  "whatsapp",
+  "bio",
+  "address",
+  "city",
+  "state",
+  "pincode",
+  "locations",
+  "propertyTypes",
+  "languages",
+];
+
+// Extended set — admin only (identity / tax / portfolio stats / prefs / SEO).
+const ADMIN_EDITABLE_FIELDS = [
+  ...OWNER_EDITABLE_FIELDS,
+  "name",
+  "email",
+  "longBio",
+  "avatarColor",
+  "coverImage",
+  "totalProperties",
+  "activeListings",
+  "isCompany",
+  "companyName",
+  "gstin",
+  "pan",
+  "preferences",
+  "metaTitle",
+  "metaDescription",
+];
+// Shared permission helpers — keep the 403 response shape consistent with
+// updateLandlord / the Lead Organizer ownership check.
+const isAdmin = (req) => req.user?.role === "admin";
+const isOwnerOf = (landlord, req) =>
+  Boolean(landlord?.userID) && String(landlord.userID) === String(req.user?._id);
+
+const forbidden = (res, message) =>
+  res.status(403).json({ success: false, message, code: "FORBIDDEN" });
+
 export const updateLandlord = async (req, res) => {
   try {
     const { id } = req.params;
+    const isAdmin = req.user?.role === "admin";
 
-    let landlord = await Landlord.findById(id);
+    const landlord = await Landlord.findById(id);
     if (!landlord) {
       return res.status(404).json({
         success: false,
@@ -471,34 +524,35 @@ export const updateLandlord = async (req, res) => {
       });
     }
 
-    // Fields that are allowed to be updated
-    const allowedUpdates = [
-      "name",
-      "title",
-      "bio",
-      "longBio",
-      "phone",
-      "whatsapp",
-      "email",
-      "address",
-      "city",
-      "state",
-      "pincode",
-      "avatarColor",
-      "coverImage",
-      "totalProperties",
-      "activeListings",
-      "propertyTypes",
-      "isCompany",
-      "companyName",
-      "gstin",
-      "pan",
-      "locations",
-      "languages",
-      "preferences",
-      "metaTitle",
-      "metaDescription",
-    ];
+    // Ownership — the requester must be the linked User or an admin.
+    const isOwner =
+      landlord.userID && String(landlord.userID) === String(req.user._id);
+    if (!isOwner && !isAdmin) {
+      return res.status(403).json({
+        success: false,
+        message: "Access denied. You don't own this landlord profile.",
+        code: "FORBIDDEN",
+      });
+    }
+
+    const allowedUpdates = isAdmin
+      ? ADMIN_EDITABLE_FIELDS
+      : OWNER_EDITABLE_FIELDS;
+
+    // For non-admin owners, reject any admin-only field outright.
+    if (!isAdmin) {
+      const requested = Object.keys(req.body || {});
+      const forbidden = requested.filter(
+        (f) => !OWNER_EDITABLE_FIELDS.includes(f),
+      );
+      if (forbidden.length > 0) {
+        return res.status(403).json({
+          success: false,
+          message: `You don't have permission to update: ${forbidden.join(", ")}.`,
+          code: "FORBIDDEN",
+        });
+      }
+    }
 
     // Update only allowed fields from request body
     for (const field of allowedUpdates) {
@@ -573,6 +627,15 @@ export const deleteLandlord = async (req, res) => {
       });
     }
 
+    // Admin-only — permanent data destruction, so owners are never allowed to
+    // self-delete (they can go inactive via PATCH /:id/status instead).
+    if (!isAdmin(req)) {
+      return forbidden(
+        res,
+        "Access denied. Only admins can delete landlord profiles.",
+      );
+    }
+
     // Optionally delete the associated user as well
     if (landlord.userID) {
       await User.findByIdAndUpdate(landlord.userID, { role: "user" });
@@ -609,6 +672,15 @@ export const uploadDocument = async (req, res) => {
         success: false,
         message: "Landlord not found.",
       });
+    }
+
+    // Owner-or-admin — a landlord may attach their own documents, but never
+    // manage someone else's (and never mark them verified — that's admin-only).
+    if (!isAdmin(req) && !isOwnerOf(landlord, req)) {
+      return forbidden(
+        res,
+        "Access denied. You don't own this landlord profile.",
+      );
     }
 
     if (!req.file) {
@@ -659,6 +731,14 @@ export const verifyDocument = async (req, res) => {
       });
     }
 
+    // Admin-only — verifying a document is an assertion of trust.
+    if (!isAdmin(req)) {
+      return forbidden(
+        res,
+        "Access denied. Only admins can verify documents.",
+      );
+    }
+
     const document = landlord.documents.id(docId);
     if (!document) {
       return res.status(404).json({
@@ -702,6 +782,14 @@ export const verifyLandlord = async (req, res) => {
       });
     }
 
+    // Admin-only — a landlord must not verify their own badge.
+    if (!isAdmin(req)) {
+      return forbidden(
+        res,
+        "Access denied. Only admins can update verification status.",
+      );
+    }
+
     if (isVerified !== undefined) landlord.isVerified = isVerified;
     if (identityVerified !== undefined)
       landlord.identityVerified = identityVerified;
@@ -739,6 +827,15 @@ export const updateBankDetails = async (req, res) => {
         success: false,
         message: "Landlord not found.",
       });
+    }
+
+    // Owner-or-admin — a landlord may set their own payout details, but never
+    // someone else's.
+    if (!isAdmin(req) && !isOwnerOf(landlord, req)) {
+      return forbidden(
+        res,
+        "Access denied. You don't own this landlord profile.",
+      );
     }
 
     landlord.bankDetails = {
@@ -783,6 +880,14 @@ export const toggleFeatured = async (req, res) => {
       });
     }
 
+    // Admin-only — featuring is a marketing/badging decision.
+    if (!isAdmin(req)) {
+      return forbidden(
+        res,
+        "Access denied. Only admins can feature landlords.",
+      );
+    }
+
     landlord.featured = !landlord.featured;
     await landlord.save();
 
@@ -824,6 +929,14 @@ export const updateStatus = async (req, res) => {
         success: false,
         message: "Landlord not found.",
       });
+    }
+
+    // Admin-only — status controls visibility/access, so owners can't change it.
+    if (!isAdmin(req)) {
+      return forbidden(
+        res,
+        "Access denied. Only admins can update landlord status.",
+      );
     }
 
     landlord.status = status;
