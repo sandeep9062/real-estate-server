@@ -1,4 +1,5 @@
 import Booking from '../models/Booking.js';
+import Property from '../models/Property.js';
 import User from '../models/User.js';
 import { createNotification } from './notificationController.js';
 import { notifyBookingStatusEmail } from '../utils/transactionalEmails.js';
@@ -141,3 +142,95 @@ const updateBookingStatus = async (req, res) => {
 };
 
 export { getAllBookings, getBookingById, deleteBooking, updateBookingStatus };
+
+const BOOKING_STATUSES = ['Pending', 'Confirmed', 'Completed', 'Cancelled'];
+
+// @desc    Get all visit bookings made on the logged-in landlord's properties
+// @route   GET /api/bookings/owner
+// @access  Private (landlord/admin)
+const getMyPropertyBookings = async (req, res) => {
+  try {
+    const ownedProperties = await Property.find({ user: req.user._id }).select('_id');
+    const propertyIds = ownedProperties.map((p) => p._id);
+
+    const bookings = await Booking.find({ property: { $in: propertyIds } })
+      .populate('user', 'name email phone')
+      .populate('property', 'title slug image deal price')
+      .sort({ createdAt: -1 });
+
+    res.json(bookings);
+  } catch (error) {
+    console.error('Error fetching property bookings:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+// @desc    Landlord/admin updates the status of a visit booked on their own property
+// @route   PATCH /api/bookings/:id/owner-status
+// @access  Private (property owner or admin)
+const updateOwnerBookingStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status } = req.body;
+
+    if (!BOOKING_STATUSES.includes(status)) {
+      return res.status(400).json({ message: 'Invalid status value.' });
+    }
+
+    const booking = await Booking.findById(id).populate('user', 'name email').populate('property', 'title user');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    const ownerId = booking.property?.user ? String(booking.property.user) : '';
+    if (ownerId !== String(req.user._id) && req.user.role !== 'admin') {
+      return res.status(403).json({ message: 'Not authorized to update this booking.' });
+    }
+
+    const oldStatus = booking.status;
+    if (oldStatus === status) {
+      return res.json({ message: 'Status unchanged', booking });
+    }
+
+    booking.status = status;
+    await booking.save();
+
+    // Notify the visitor (best-effort — never fail the update on this)
+    try {
+      await createNotification({
+        userId: booking.user._id,
+        title: `Visit ${status.toLowerCase()}`,
+        message: `Your visit for "${booking.property.title}" was ${status.toLowerCase()} by the landlord.`,
+        type: status === 'Confirmed' ? 'success' : status === 'Cancelled' ? 'warning' : 'info',
+        category: 'booking',
+        priority: 'medium',
+        metadata: {
+          bookingId: booking._id,
+          propertyId: booking.property._id,
+          oldStatus,
+          newStatus: status,
+        },
+        actionUrl: '/bookings',
+      });
+    } catch (notificationError) {
+      console.error('Error creating notification:', notificationError);
+    }
+
+    const visitDateStr = new Date(booking.date).toLocaleDateString();
+    notifyBookingStatusEmail({
+      userEmail: booking.user.email,
+      userName: booking.user.name,
+      propertyTitle: booking.property.title,
+      status: booking.status,
+      visitDateStr,
+    }).catch((err) => console.warn('Booking status email skipped:', err.message));
+
+    res.json({ message: 'Booking status updated successfully', booking });
+  } catch (error) {
+    console.error('Error updating booking status:', error);
+    res.status(500).json({ message: 'Server Error' });
+  }
+};
+
+export { getMyPropertyBookings, updateOwnerBookingStatus };
