@@ -259,10 +259,11 @@ export const getMyAgentProfile = async (req, res) => {
  *
  * Accepts JSON or multipart (optional `photo` file for the avatar). Only the
  * fields present in the request body are changed — no full wizard payload
- * required. Unknown/forbidden fields (name, email, userID, verification,
- * stats...) are ignored. Scoped to the requester via req.user._id.
+ * required. Unknown/forbidden fields (email, userID, verification, stats...)
+ * are ignored. Scoped to the requester via req.user._id.
  */
 const AGENT_EDITABLE_STRING_FIELDS = [
+  "name",
   "title",
   "phone",
   "whatsapp",
