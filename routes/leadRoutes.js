@@ -30,18 +30,33 @@ const leadCreateLimiter = rateLimit({
 
 // Public + optionalAuth: the WhatsApp click fires from a public listing page.
 // agentId is derived server-side from the property's owner inside the controller.
+// GET is restricted to the property owner's role (agent OR landlord) + admin,
+// and the controller scopes results to agentId = req.user._id, so each user only
+// ever sees leads for the properties they own.
 router
   .route("/")
   .post(leadCreateLimiter, optionalAuth, createLead)
-  .get(protect, requireRole(["agent", "admin"]), getLeads);
+  .get(protect, requireRole(["agent", "landlord", "admin"]), getLeads);
 
 // Admin: all leads across the platform (both WhatsApp-click and brochure leads).
 // Declared before /:id routes so it is never captured as an id.
 router.get("/admin/all", protect, requireRole(["admin"]), getAllLeads);
 
 // Keep /stats before any /:id route so it is never captured as an id.
-router.get("/stats", protect, requireRole(["agent", "admin"]), getLeadStats);
+router.get(
+  "/stats",
+  protect,
+  requireRole(["agent", "landlord", "admin"]),
+  getLeadStats,
+);
 
-router.patch("/:id", protect, requireRole(["agent", "admin"]), updateLead);
+// Ownership is verified inside the controller (lead.agentId === req.user._id),
+// so landlords can only update leads for their own listings.
+router.patch(
+  "/:id",
+  protect,
+  requireRole(["agent", "landlord", "admin"]),
+  updateLead,
+);
 
 export default router;

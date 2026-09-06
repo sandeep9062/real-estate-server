@@ -80,7 +80,7 @@ export const createLead = asyncHandler(async (req, res) => {
 /**
  * @desc    Get all leads for the authenticated agent (CRM/WhatsApp-click leads)
  * @route   GET /api/leads
- * @access  Private (agent/admin)
+ * @access  Private (agent/landlord — scoped to the property owner; admin)
  * @query   status, propertyId, sortBy (default lastActivityAt), sortOrder (desc|asc)
  */
 export const getLeads = asyncHandler(async (req, res) => {
@@ -217,9 +217,9 @@ export const getAllLeads = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Update a lead's status and/or notes (agent-only, ownership verified)
+ * @desc    Update a lead's status and/or notes (owner-only, ownership verified)
  * @route   PATCH /api/leads/:id
- * @access  Private (agent/admin)
+ * @access  Private (agent/landlord — must own the lead; admin)
  */
 export const updateLead = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -283,9 +283,9 @@ export const updateLead = asyncHandler(async (req, res) => {
 });
 
 /**
- * @desc    Simple stats for the authenticated agent
+ * @desc    Simple stats for the authenticated agent/landlord
  * @route   GET /api/leads/stats
- * @access  Private (agent/admin)
+ * @access  Private (agent/landlord — scoped to the property owner; admin)
  */
 export const getLeadStats = asyncHandler(async (req, res) => {
   const agentId = req.user._id;
