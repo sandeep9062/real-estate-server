@@ -26,7 +26,17 @@ const FURNISHING = [
   "Un-Furnished",
 ];
 const POSTED_BY = ["Owner", "Agent", "Builder"];
-const LISTING_AVAIL = ["Available", "Fresh", "Under offer", "Booked"];
+// Mirrors the listingAvailability enum in backend/models/Property.js
+const LISTING_AVAIL = [
+  "Available",
+  "Fresh",
+  "Under offer",
+  "Booked",
+  "Sold",
+  "Rented",
+  "Review Required",
+  "Non Available",
+];
 const OC_STATUS = ["Available", "Applied", "Not issued", "NA"];
 const PARKING_TYPE = ["None", "Open", "Covered", "Both"];
 const AREA_UNITS = ["sqft", "sqyard", "sqm", "marla", "kanal", "acre"];

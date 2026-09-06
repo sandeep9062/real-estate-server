@@ -252,7 +252,16 @@ const propertySchema = new mongoose.Schema(
 
     listingAvailability: {
       type: String,
-      enum: ["Available", "Fresh", "Under offer", "Booked"],
+      enum: [
+        "Available",
+        "Fresh",
+        "Under offer",
+        "Booked",
+        "Sold",
+        "Rented",
+        "Review Required",
+        "Non Available",
+      ],
       default: "Available",
       index: true,
     },
@@ -266,6 +275,7 @@ const propertySchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
     visitVerified: {
       type: Boolean,
       default: false,
@@ -356,13 +366,6 @@ const propertySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
-    },
-
-    status: {
-      type: String,
-      enum: ["Active", "Sold", "Rented", "Inactive", "Review Required"],
-      default: "Active",
       index: true,
     },
   },

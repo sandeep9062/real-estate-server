@@ -1,6 +1,7 @@
 import User from "../models/User.js";
 import Property from "../models/Property.js";
 import Booking from "../models/Booking.js";
+import VisitReview from "../models/VisitReview.js";
 import { createNotification } from "./notificationController.js";
 import {
   notifyBookingCreatedEmails,
@@ -123,17 +124,91 @@ export const updateUser = async (req, res) => {
 };
 
 export const deleteUser = async (req, res) => {
+  const session = await mongoose.startSession();
+  session.startTransaction();
+
   try {
-    const user = await User.findById(req.params.id);
+    const user = await User.findById(req.params.id).session(session);
 
     if (!user) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ message: "User not found" });
     }
 
-    await user.deleteOne();
+    // 1️⃣ Find all properties listed by this user — union of the direct
+    // `user` ref and any legacy ids present in the user's `ownedProperties`
+    // array, so nothing listed by him is ever orphaned.
+    const ownedByRef = await Property.find({ user: user._id })
+      .select("_id")
+      .session(session);
 
-    res.json({ message: "User removed" });
+    const propertyIds = [
+      ...new Set(
+        [
+          ...ownedByRef.map((p) => p._id),
+          ...((user.ownedProperties || []).map((p) => p._id || p)),
+        ].map((id) => id.toString()),
+      ),
+    ];
+
+    if (propertyIds.length) {
+      // Remove these properties from ALL users' favourites
+      await User.updateMany(
+        { favProperties: { $in: propertyIds } },
+        { $pull: { favProperties: { $in: propertyIds } } },
+        { session },
+      );
+
+      // Find bookings related to these properties, then delete them
+      const bookings = await Booking.find(
+        { property: { $in: propertyIds } },
+        { _id: 1 },
+      ).session(session);
+      const bookingIds = bookings.map((b) => b._id);
+
+      await Booking.deleteMany(
+        { property: { $in: propertyIds } },
+        { session },
+      );
+      await VisitReview.deleteMany(
+        { property: { $in: propertyIds } },
+        { session },
+      );
+
+      // Remove deleted bookings from users' bookedVisits
+      if (bookingIds.length) {
+        await User.updateMany(
+          { bookedVisits: { $in: bookingIds } },
+          { $pull: { bookedVisits: { $in: bookingIds } } },
+          { session },
+        );
+      }
+    }
+
+    // 2️⃣ Permanently delete all properties registered by the user
+    if (propertyIds.length) {
+      await Property.deleteMany({ _id: { $in: propertyIds } }, { session });
+    }
+
+    // 3️⃣ Delete the user (ownedProperties refs go away with the user)
+    await user.deleteOne({ session });
+
+    await session.commitTransaction();
+    session.endSession();
+
+    res.json({
+      success: true,
+      id: user._id,
+      deletedProperties: propertyIds.length,
+      message:
+        propertyIds.length > 0
+          ? `User removed along with ${propertyIds.length} registered propert${propertyIds.length === 1 ? "y" : "ies"}`
+          : "User removed",
+    });
   } catch (error) {
+    await session.abortTransaction();
+    session.endSession();
     console.error("Error deleting user:", error);
     res.status(500).json({ message: "Server Error" });
   }

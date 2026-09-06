@@ -28,8 +28,19 @@ function parseMaybeJson(value) {
   }
 }
 
-const LISTING_AVAIL = ["Available", "Fresh", "Under offer", "Booked"];
+// Mirrors the listingAvailability enum in backend/models/Property.js
+const LISTING_AVAIL = [
+  "Available",
+  "Fresh",
+  "Under offer",
+  "Booked",
+  "Sold",
+  "Rented",
+  "Review Required",
+  "Non Available",
+];
 const OC_STATUS = ["Available", "Applied", "Not issued", "NA"];
+const PROPERTY_STATUS = ["Active", "Sold", "Rented", "Inactive", "Review Required"];
 
 function parseOptionalNumber(v) {
   if (v === undefined || v === null || v === "") return undefined;
@@ -674,6 +685,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     facilities,
     existingImages,
     isActive,
+    status,
     listingAvailability,
     virtualTourUrl,
     floorPlanImages: rawFloorPlans,
@@ -681,6 +693,8 @@ const updateProperty = asyncHandler(async (req, res) => {
     bulbulVerified,
     ownerVerified,
     visitVerified,
+    isFeatured,
+    isVerified,
     reraNumber: bodyReraNumber,
     maintenanceCharge,
     securityDeposit,
@@ -735,6 +749,13 @@ const updateProperty = asyncHandler(async (req, res) => {
   property.image = images;
   property.isActive = isActive === undefined ? property.isActive : isActive;
 
+  // Lifecycle status update — keeps the isActive flag in sync so listing
+  // visibility matches the selected status (only "Active" stays live).
+  if (status && PROPERTY_STATUS.includes(status)) {
+    property.status = status;
+    property.isActive = status === "Active";
+  }
+
   if (listingAvailability && LISTING_AVAIL.includes(listingAvailability)) {
     property.listingAvailability = listingAvailability;
   }
@@ -769,6 +790,10 @@ const updateProperty = asyncHandler(async (req, res) => {
     if (ob !== undefined) property.ownerVerified = ob;
     const vb = coerceBool(visitVerified);
     if (vb !== undefined) property.visitVerified = vb;
+    const fv = coerceBool(isFeatured);
+    if (fv !== undefined) property.isFeatured = fv;
+    const iv = coerceBool(isVerified);
+    if (iv !== undefined) property.isVerified = iv;
   }
 
   if (maintenanceCharge !== undefined && maintenanceCharge !== "") {

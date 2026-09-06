@@ -34,6 +34,8 @@ import landlordRoutes from "./routes/landlordRoutes.js";
 import roommateRoutes from "./routes/roommateRoutes.js";
 import leadRoutes from "./routes/leadRoutes.js";
 
+import adminPropertyRoutes from "./routes/adminPropertyRoutes.js";
+
 //import migrationRoutes from "./routes/migration.js";
 
 // ==========================================
@@ -115,6 +117,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/auth", authLegacyRoutes); // Legacy routes for forgot-password, reset-password, profile, change-password
 app.use("/api/v1/enquiry", enquiryRoutes);
 app.use("/api/properties", propertyRoutes);
+app.use("/api/admin/properties", adminPropertyRoutes);
 app.use("/api/saved-searches", savedSearchRoutes);
 app.use("/api/visit-reviews", visitReviewRoutes);
 app.use("/api/v1/journals", journalRoutes);

@@ -12,7 +12,7 @@ RULES:
 - availability: "Ready to Move" or "Under Construction".
 - furnishing: "Furnished" | "Fully Furnished" | "Semi Furnished" | "Un-Furnished".
 - postedBy: "Owner" | "Agent" | "Builder" (broker/agent → Agent).
-- listingAvailability: "Available" | "Fresh" | "Under offer" | "Booked" (default Available).
+- listingAvailability: "Available" | "Fresh" | "Under offer" | "Booked" | "Sold" | "Rented" | "Review Required" | "Non Available" (default Available).
 - area: { "value": number (min 0), "unit": "sqft"|"sqyard"|"sqm"|"marla"|"kanal"|"acre" }. Map "sq ft", "square feet" → sqft.
 - location: { "address", "city", "state", "country" (ISO code, default "IN"), "pincode", "coordinates": { "lat": number, "lng": number } }. Use 0,0 for lat/lng if unknown.
 - facilities: { "bedrooms", "bathrooms", "parkings", "servantRooms", "balconies" (integers ≥0), "parkingType": "None"|"Open"|"Covered"|"Both" or null }. Map "3BHK"/"3 BHK" → bedrooms 3.
