@@ -198,6 +198,43 @@ export const registerAgent = async (req, res) => {
 };
 
 /**
+ * @desc    Get an agent profile by the linked User ID
+ * @route   GET /api/agents/by-user/:userId
+ * @access  Private/Admin (admin dashboard user-profile page)
+ */
+export const getAgentByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const agent = await Agent.findOne({ userID: userId });
+
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        message: "No agent profile found for this user.",
+      });
+    }
+
+    const agentData = agent.toJSON();
+    agentData.profileCompleteness = getProfileCompleteness(
+      agentData,
+      AGENT_PROFILE_FIELDS,
+    );
+
+    res.status(200).json({
+      success: true,
+      data: agentData,
+    });
+  } catch (error) {
+    console.error("Get agent by user id error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch agent profile.",
+    });
+  }
+};
+
+/**
  * @desc    Get the logged-in agent's own profile (with profileCompleteness)
  * @route   GET /api/agents/me
  * @access  Private

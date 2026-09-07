@@ -490,6 +490,37 @@ export const getLandlords = async (req, res) => {
 };
 
 /**
+ * @desc    Get a landlord profile by the linked User ID
+ * @route   GET /api/landlords/by-user/:userId
+ * @access  Private/Admin (admin dashboard user-profile page)
+ */
+export const getLandlordByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const landlord = await Landlord.findOne({ userID: userId });
+
+    if (!landlord) {
+      return res.status(404).json({
+        success: false,
+        message: "No landlord profile found for this user.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: landlord,
+    });
+  } catch (error) {
+    console.error("Get landlord by user id error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Failed to fetch landlord profile.",
+    });
+  }
+};
+
+/**
  * @desc    Get a single landlord by ID or slug
  * @route   GET /api/landlords/:identifier
  * @access  Public

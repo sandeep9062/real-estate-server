@@ -3,6 +3,7 @@ import {
   registerLandlord,
   getLandlords,
   getLandlordById,
+  getLandlordByUserId,
   getMyLandlordProfile,
   updateMyLandlordProfile,
   updateLandlord,
@@ -14,7 +15,7 @@ import {
   toggleFeatured,
   updateStatus,
 } from "../controllers/landlordController.js";
-import { protect } from "../middlewares/authMiddleware.js";
+import { protect, checkAdmin } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multer.js";
 
 const router = express.Router();
@@ -27,6 +28,9 @@ router.get("/", getLandlords);
 // captured as an identifier.
 router.get("/me", protect, getMyLandlordProfile);
 router.put("/me", protect, upload.single("photo"), updateMyLandlordProfile);
+
+// GET /api/landlords/by-user/:userId — Landlord profile linked to a user id (admin dashboard)
+router.get("/by-user/:userId", protect, checkAdmin, getLandlordByUserId);
 
 router.get("/:identifier", getLandlordById);
 
