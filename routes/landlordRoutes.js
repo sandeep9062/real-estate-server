@@ -4,6 +4,7 @@ import {
   getLandlords,
   getLandlordById,
   getLandlordByUserId,
+  createLandlordByUserId,
   getMyLandlordProfile,
   updateMyLandlordProfile,
   updateLandlord,
@@ -31,6 +32,9 @@ router.put("/me", protect, upload.single("photo"), updateMyLandlordProfile);
 
 // GET /api/landlords/by-user/:userId — Landlord profile linked to a user id (admin dashboard)
 router.get("/by-user/:userId", protect, checkAdmin, getLandlordByUserId);
+
+// POST /api/landlords/by-user/:userId — Admin creates a landlord profile for a user (role must be "landlord")
+router.post("/by-user/:userId", protect, checkAdmin, upload.single("photo"), createLandlordByUserId);
 
 router.get("/:identifier", getLandlordById);
 

@@ -581,3 +581,165 @@ export const updateAgentByUserId = async (req, res) => {
     });
   }
 };
+
+/**
+ * @desc    Create an agent profile for an existing user (admin dashboard)
+ * @route   POST /api/agents/by-user/:userId
+ * @access  Private/Admin
+ */
+export const createAgentByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // The linked user must exist
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Only users with the "agent" role can get an agent profile
+    if (user.role !== "agent") {
+      return res.status(400).json({
+        success: false,
+        message: `This user's role is "${user.role}" — only users with the "agent" role can have an agent profile.`,
+      });
+    }
+
+    // One profile per user — reject duplicates
+    const existing = await Agent.findOne({ userID: userId });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "This user already has an agent profile.",
+      });
+    }
+
+    const agent = new Agent({
+      userID: userId,
+      // Seed identity fields from the user account when not provided
+      name: String(req.body.name || user.name || "").trim(),
+      email: String(req.body.email || user.email || "").trim(),
+      phone: String(req.body.phone || user.phone || "").trim(),
+    });
+
+    if (!agent.name) {
+      return res.status(400).json({
+        success: false,
+        message: '"name" is required to create an agent profile.',
+      });
+    }
+
+    // String fields (title, whatsapp, agencyName, bio, longBio, rera, email,
+    // avatarColor, coverColor, coverImage, metaTitle, metaDescription)
+    for (const field of AGENT_ADMIN_STRING_FIELDS) {
+      if (req.body[field] !== undefined && req.body[field] !== null) {
+        agent[field] = String(req.body[field]).trim();
+      }
+    }
+
+    // Array fields — accept a real array or a JSON-encoded string (FormData)
+    for (const field of AGENT_EDITABLE_ARRAY_FIELDS) {
+      let value = req.body[field];
+      if (value === undefined || value === null) continue;
+
+      if (typeof value === "string") {
+        try {
+          value = JSON.parse(value);
+        } catch {
+          value = [value];
+        }
+      }
+      if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for "${field}" — expected an array of strings.`,
+        });
+      }
+      agent[field] = value.map((v) => v.trim()).filter(Boolean);
+    }
+
+    // Boolean flags (verified / topAgent / featured)
+    for (const field of AGENT_ADMIN_BOOLEAN_FIELDS) {
+      if (req.body[field] === undefined || req.body[field] === null) continue;
+      const value =
+        typeof req.body[field] === "string"
+          ? req.body[field] === "true"
+          : req.body[field];
+      if (typeof value !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for "${field}" — expected a boolean.`,
+        });
+      }
+      agent[field] = value;
+    }
+
+    // Years of experience
+    const experience = req.body.experience;
+    if (experience !== undefined && experience !== null && experience !== "") {
+      const years = Number(experience);
+      if (!Number.isFinite(years) || years < 0 || years > 60) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid "experience" — expected a number between 0 and 60.',
+        });
+      }
+      agent.experience = Math.round(years);
+    }
+
+    // Status — enum-validated
+    if (req.body.status !== undefined && req.body.status !== null && req.body.status !== "") {
+      if (!["active", "inactive"].includes(req.body.status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid "status" — expected "active" or "inactive".',
+        });
+      }
+      agent.status = req.body.status;
+    }
+
+    // Optional avatar upload (multipart `photo`)
+    if (req.file?.path) {
+      agent.avatar = req.file.path;
+    }
+
+    await agent.save();
+
+    const agentData = agent.toJSON();
+    agentData.profileCompleteness = getProfileCompleteness(
+      agentData,
+      AGENT_PROFILE_FIELDS,
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Agent profile created.",
+      data: agentData,
+    });
+  } catch (error) {
+    console.error("Create agent by user id error:", error);
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(". "),
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "This user already has an agent profile.",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to create agent profile.",
+    });
+  }
+};

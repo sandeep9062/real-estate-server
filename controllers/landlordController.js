@@ -527,6 +527,211 @@ export const getLandlordByUserId = async (req, res) => {
 };
 
 /**
+ * @desc    Create a landlord profile for an existing user (admin dashboard)
+ * @route   POST /api/landlords/by-user/:userId
+ * @access  Private/Admin
+ */
+export const createLandlordByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // The linked user must exist
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found.",
+      });
+    }
+
+    // Only users with the "landlord" role can get a landlord profile
+    if (user.role !== "landlord") {
+      return res.status(400).json({
+        success: false,
+        message: `This user's role is "${user.role}" — only users with the "landlord" role can have a landlord profile.`,
+      });
+    }
+
+    // One profile per user — reject duplicates
+    const existing = await Landlord.findOne({ userID: userId });
+    if (existing) {
+      return res.status(409).json({
+        success: false,
+        message: "This user already has a landlord profile.",
+      });
+    }
+
+    const landlord = new Landlord({
+      userID: userId,
+      // Seed identity fields from the user account when not provided
+      name: String(req.body.name || user.name || "").trim(),
+      email: String(req.body.email || user.email || "").trim(),
+      phone: String(req.body.phone || user.phone || "").trim(),
+    });
+
+    if (!landlord.name) {
+      return res.status(400).json({
+        success: false,
+        message: '"name" is required to create a landlord profile.',
+      });
+    }
+
+    // Simple string fields
+    const stringFields = [
+      "title",
+      "whatsapp",
+      "bio",
+      "longBio",
+      "address",
+      "city",
+      "state",
+      "pincode",
+      "companyName",
+      "gstin",
+      "pan",
+      "avatarColor",
+      "coverImage",
+      "metaTitle",
+      "metaDescription",
+    ];
+    for (const field of stringFields) {
+      if (req.body[field] !== undefined && req.body[field] !== null) {
+        landlord[field] = String(req.body[field]).trim();
+      }
+    }
+
+    // Array fields — accept a real array or a JSON-encoded string (FormData)
+    for (const field of ["propertyTypes", "locations", "languages"]) {
+      let value = req.body[field];
+      if (value === undefined || value === null) continue;
+
+      if (typeof value === "string") {
+        try {
+          value = JSON.parse(value);
+        } catch {
+          value = [value];
+        }
+      }
+      if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for "${field}" — expected an array of strings.`,
+        });
+      }
+      landlord[field] = value.map((v) => v.trim()).filter(Boolean);
+    }
+
+    // Boolean flags — accept real booleans or "true"/"false" strings
+    for (const field of [
+      "isVerified",
+      "identityVerified",
+      "isCompany",
+      "featured",
+    ]) {
+      if (req.body[field] === undefined || req.body[field] === null) continue;
+      const value =
+        typeof req.body[field] === "string"
+          ? req.body[field] === "true"
+          : req.body[field];
+      if (typeof value !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for "${field}" — expected a boolean.`,
+        });
+      }
+      landlord[field] = value;
+    }
+
+    // Numeric portfolio stats
+    for (const field of ["totalProperties", "activeListings"]) {
+      if (req.body[field] === undefined || req.body[field] === null || req.body[field] === "")
+        continue;
+      const num = Number(req.body[field]);
+      if (!Number.isFinite(num) || num < 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid "${field}" — expected a non-negative number.`,
+        });
+      }
+      landlord[field] = Math.round(num);
+    }
+
+    // Status — enum-validated
+    if (req.body.status !== undefined && req.body.status !== null && req.body.status !== "") {
+      if (!["active", "inactive", "suspended"].includes(req.body.status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid "status" — expected "active", "inactive" or "suspended".',
+        });
+      }
+      landlord.status = req.body.status;
+    }
+
+    // Preferences (contact method enum, timings, visits)
+    if (req.body.preferences && typeof req.body.preferences === "object") {
+      const { contactMethod, availableTimings, acceptsVisits } = req.body.preferences;
+      if (contactMethod !== undefined && contactMethod !== null && contactMethod !== "") {
+        if (!["phone", "email", "whatsapp"].includes(contactMethod)) {
+          return res.status(400).json({
+            success: false,
+            message: 'Invalid "preferences.contactMethod" — expected "phone", "email" or "whatsapp".',
+          });
+        }
+        landlord.preferences.contactMethod = contactMethod;
+      }
+      if (availableTimings !== undefined && availableTimings !== null) {
+        landlord.preferences.availableTimings = String(availableTimings).trim();
+      }
+      if (acceptsVisits !== undefined && acceptsVisits !== null) {
+        landlord.preferences.acceptsVisits =
+          typeof acceptsVisits === "string" ? acceptsVisits === "true" : acceptsVisits;
+      }
+    }
+
+    // Optional avatar upload (multipart `photo`)
+    if (req.file?.path) {
+      landlord.avatar = req.file.path;
+    }
+
+    await landlord.save();
+
+    const landlordData = landlord.toJSON();
+    landlordData.profileCompleteness = getProfileCompleteness(
+      landlordData,
+      LANDLORD_PROFILE_FIELDS,
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Landlord profile created.",
+      data: landlordData,
+    });
+  } catch (error) {
+    console.error("Create landlord by user id error:", error);
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(". "),
+      });
+    }
+
+    if (error.code === 11000) {
+      return res.status(409).json({
+        success: false,
+        message: "This user already has a landlord profile.",
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to create landlord profile.",
+    });
+  }
+};
+
+/**
  * @desc    Get a single landlord by ID or slug
  * @route   GET /api/landlords/:identifier
  * @access  Public
