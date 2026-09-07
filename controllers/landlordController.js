@@ -507,9 +507,15 @@ export const getLandlordByUserId = async (req, res) => {
       });
     }
 
+    const landlordData = landlord.toJSON();
+    landlordData.profileCompleteness = getProfileCompleteness(
+      landlordData,
+      LANDLORD_PROFILE_FIELDS,
+    );
+
     res.status(200).json({
       success: true,
-      data: landlord,
+      data: landlordData,
     });
   } catch (error) {
     console.error("Get landlord by user id error:", error);
