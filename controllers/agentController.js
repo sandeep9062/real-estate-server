@@ -431,3 +431,153 @@ export const updateMyAgentProfile = async (req, res) => {
     });
   }
 };
+
+// Admin-editable fields — superset of the agent's own editable fields, plus
+// identity/verification, branding and SEO fields for the admin dashboard.
+const AGENT_ADMIN_STRING_FIELDS = [
+  ...AGENT_EDITABLE_STRING_FIELDS,
+  "email",
+  "avatarColor",
+  "coverColor",
+  "coverImage",
+  "metaTitle",
+  "metaDescription",
+];
+const AGENT_ADMIN_BOOLEAN_FIELDS = ["verified", "topAgent", "featured"];
+
+/**
+ * @desc    Update an agent profile by the linked User ID (admin dashboard)
+ * @route   PUT /api/agents/by-user/:userId
+ * @access  Private/Admin
+ */
+export const updateAgentByUserId = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const agent = await Agent.findOne({ userID: userId });
+    if (!agent) {
+      return res.status(404).json({
+        success: false,
+        message: "No agent profile found for this user.",
+      });
+    }
+
+    let updatesApplied = 0;
+
+    // Simple string fields — only set when provided in the body
+    for (const field of AGENT_ADMIN_STRING_FIELDS) {
+      if (req.body[field] !== undefined && req.body[field] !== null) {
+        agent[field] = String(req.body[field]).trim();
+        updatesApplied += 1;
+      }
+    }
+
+    // Array fields — accept a real array or a JSON-encoded string (FormData)
+    for (const field of AGENT_EDITABLE_ARRAY_FIELDS) {
+      let value = req.body[field];
+      if (value === undefined || value === null) continue;
+
+      if (typeof value === "string") {
+        try {
+          value = JSON.parse(value);
+        } catch {
+          value = [value];
+        }
+      }
+      if (!Array.isArray(value) || value.some((v) => typeof v !== "string")) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for "${field}" — expected an array of strings.`,
+        });
+      }
+      agent[field] = value.map((v) => v.trim()).filter(Boolean);
+      updatesApplied += 1;
+    }
+
+    // Boolean flags (verified / topAgent / featured) — accept real booleans
+    // or the strings "true"/"false" so JSON and FormData callers both work.
+    for (const field of AGENT_ADMIN_BOOLEAN_FIELDS) {
+      if (req.body[field] === undefined || req.body[field] === null) continue;
+      const value =
+        typeof req.body[field] === "string"
+          ? req.body[field] === "true"
+          : req.body[field];
+      if (typeof value !== "boolean") {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid value for "${field}" — expected a boolean.`,
+        });
+      }
+      agent[field] = value;
+      updatesApplied += 1;
+    }
+
+    // Years of experience — numeric, same validation as the self-edit route
+    const experience = req.body.experience;
+    if (experience !== undefined && experience !== null && experience !== "") {
+      const years = Number(experience);
+      if (!Number.isFinite(years) || years < 0 || years > 60) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid "experience" — expected a number between 0 and 60.',
+        });
+      }
+      agent.experience = Math.round(years);
+      updatesApplied += 1;
+    }
+
+    // Status — enum-validated
+    if (req.body.status !== undefined && req.body.status !== null && req.body.status !== "") {
+      if (!["active", "inactive"].includes(req.body.status)) {
+        return res.status(400).json({
+          success: false,
+          message: 'Invalid "status" — expected "active" or "inactive".',
+        });
+      }
+      agent.status = req.body.status;
+      updatesApplied += 1;
+    }
+
+    // Optional avatar upload (multipart `photo`)
+    if (req.file?.path) {
+      agent.avatar = req.file.path;
+      updatesApplied += 1;
+    }
+
+    if (updatesApplied === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "No editable fields were provided.",
+      });
+    }
+
+    await agent.save();
+
+    const agentData = agent.toJSON();
+    agentData.profileCompleteness = getProfileCompleteness(
+      agentData,
+      AGENT_PROFILE_FIELDS,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: "Agent profile updated.",
+      data: agentData,
+    });
+  } catch (error) {
+    console.error("Update agent by user id error:", error);
+
+    if (error.name === "ValidationError") {
+      const messages = Object.values(error.errors).map((e) => e.message);
+      return res.status(400).json({
+        success: false,
+        message: messages.join(". "),
+      });
+    }
+
+    res.status(500).json({
+      success: false,
+      message: "Failed to update agent profile.",
+    });
+  }
+};

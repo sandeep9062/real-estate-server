@@ -4,6 +4,7 @@ import {
   getAgentByUserId,
   getMyAgentProfile,
   updateMyAgentProfile,
+  updateAgentByUserId,
 } from "../controllers/agentController.js";
 import { protect, checkAdmin } from "../middlewares/authMiddleware.js";
 import upload from "../middlewares/multer.js";
@@ -15,6 +16,9 @@ router.post("/register", upload.single("photo"), registerAgent);
 
 // GET /api/agents/by-user/:userId — Agent profile linked to a user id (admin dashboard)
 router.get("/by-user/:userId", protect, checkAdmin, getAgentByUserId);
+
+// PUT /api/agents/by-user/:userId — Admin updates an agent profile by linked user id
+router.put("/by-user/:userId", protect, checkAdmin, upload.single("photo"), updateAgentByUserId);
 
 // GET /api/agents/me — Logged-in agent's own profile + profileCompleteness
 router.get("/me", protect, getMyAgentProfile);

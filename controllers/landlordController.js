@@ -613,6 +613,10 @@ const ADMIN_EDITABLE_FIELDS = [
   "gstin",
   "pan",
   "preferences",
+  "isVerified",
+  "identityVerified",
+  "status",
+  "featured",
   "metaTitle",
   "metaDescription",
 ];
