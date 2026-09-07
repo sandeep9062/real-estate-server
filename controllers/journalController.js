@@ -129,6 +129,7 @@ const updateJournal = asyncHandler(async (req, res) => {
     targetSector,
     metaTitle,
     isActive,
+    isFeatured,
     keywords,
   } = req.body;
   const coverImage = req.file ? req.file.secure_url : null;
@@ -150,6 +151,9 @@ const updateJournal = asyncHandler(async (req, res) => {
     journal.metaTitle = metaTitle || journal.metaTitle;
     if (isActive !== undefined) {
       journal.isActive = isActive;
+    }
+    if (isFeatured !== undefined) {
+      journal.isFeatured = isFeatured;
     }
     if (keywords !== undefined) {
       if (typeof keywords === "string") {

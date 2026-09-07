@@ -150,7 +150,7 @@ export const registerAgent = async (req, res) => {
       bio,
       rera: reraNumber || "",
       agencyName: agencyName || "",
-      status: "active",
+      isActive: true,
       verified: false,
     });
 
@@ -443,7 +443,7 @@ const AGENT_ADMIN_STRING_FIELDS = [
   "metaTitle",
   "metaDescription",
 ];
-const AGENT_ADMIN_BOOLEAN_FIELDS = ["verified", "topAgent", "featured"];
+const AGENT_ADMIN_BOOLEAN_FIELDS = ["verified", "topAgent", "featured", "isActive"];
 
 /**
  * @desc    Update an agent profile by the linked User ID (admin dashboard)
@@ -527,16 +527,7 @@ export const updateAgentByUserId = async (req, res) => {
     }
 
     // Status — enum-validated
-    if (req.body.status !== undefined && req.body.status !== null && req.body.status !== "") {
-      if (!["active", "inactive"].includes(req.body.status)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid "status" — expected "active" or "inactive".',
-        });
-      }
-      agent.status = req.body.status;
-      updatesApplied += 1;
-    }
+    // (removed — profiles use the `isActive` boolean instead of a `status` string)
 
     // Optional avatar upload (multipart `photo`)
     if (req.file?.path) {
@@ -691,15 +682,7 @@ export const createAgentByUserId = async (req, res) => {
     }
 
     // Status — enum-validated
-    if (req.body.status !== undefined && req.body.status !== null && req.body.status !== "") {
-      if (!["active", "inactive"].includes(req.body.status)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid "status" — expected "active" or "inactive".',
-        });
-      }
-      agent.status = req.body.status;
-    }
+    // (removed — profiles use the `isActive` boolean instead of a `status` string)
 
     // Optional avatar upload (multipart `photo`)
     if (req.file?.path) {

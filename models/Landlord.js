@@ -47,10 +47,9 @@ const landlordSchema = new mongoose.Schema(
     companyName: { type: String, trim: true },
     gstin: { type: String, trim: true }, // GST number for corporate landlords
     pan: { type: String, trim: true }, // PAN card number
-    status: {
-      type: String,
-      enum: ["active", "inactive", "suspended"],
-      default: "active",
+    isActive: {
+      type: Boolean,
+      default: true,
     },
     featured: { type: Boolean, default: false },
 

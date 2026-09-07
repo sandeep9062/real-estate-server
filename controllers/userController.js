@@ -108,6 +108,18 @@ export const updateUser = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Only admins may change privileged fields (role / isActive).
+    // Regular authenticated users can still update their own basic profile
+    // fields (name / email / phone) — used by the dashboard settings page.
+    const wantsPrivilegedChange =
+      (role !== undefined && role !== user.role) ||
+      (isActive !== undefined && isActive !== user.isActive);
+    if (wantsPrivilegedChange && req.user?.role !== "admin") {
+      return res
+        .status(403)
+        .json({ message: "Only admins can change role or active status." });
+    }
+
     user.name = name || user.name;
     user.email = email || user.email;
     user.phone = phone || user.phone;

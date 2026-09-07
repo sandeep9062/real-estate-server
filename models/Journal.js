@@ -11,7 +11,7 @@ const journalSchema = new mongoose.Schema(
     targetSector: String,
     metaTitle: String,
     keywords: [String],
-    // status: { type: String, enum: ["draft", "published"], default: "draft" },
+    isFeatured: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true },

@@ -42,18 +42,17 @@ const agentSchema = new mongoose.Schema(
     verified: { type: Boolean, default: false },
     topAgent: { type: Boolean, default: false },
     rera: { type: String, trim: true }, // RERA registration number
-    status: {
-      type: String,
-      enum: ["active", "inactive"],
-      default: "active",
-    },
+
     featured: { type: Boolean, default: false }, // Featured on homepage
 
     // Service Areas
     locations: [{ type: String }], // Cities served (Chandigarh, Mohali, Panchkula, etc.)
     specialisations: [{ type: String }], // e.g. Luxury Villas, Residential, Commercial
     languages: [{ type: String }], // e.g. Hindi, English, Punjabi
-
+    isActive: {
+      type: Boolean,
+      default: true,
+    },
     // Achievements
     achievements: [{ type: String }], // List of achievements for profile page
 

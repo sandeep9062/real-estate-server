@@ -131,7 +131,7 @@ export const registerLandlord = async (req, res) => {
       companyName: companyName || "",
       gstin: gstin || "",
       pan: pan || "",
-      status: "active",
+      isActive: true,
       isVerified: false,
       memberSince: new Date(),
     });
@@ -627,6 +627,7 @@ export const createLandlordByUserId = async (req, res) => {
       "identityVerified",
       "isCompany",
       "featured",
+      "isActive",
     ]) {
       if (req.body[field] === undefined || req.body[field] === null) continue;
       const value =
@@ -657,15 +658,7 @@ export const createLandlordByUserId = async (req, res) => {
     }
 
     // Status — enum-validated
-    if (req.body.status !== undefined && req.body.status !== null && req.body.status !== "") {
-      if (!["active", "inactive", "suspended"].includes(req.body.status)) {
-        return res.status(400).json({
-          success: false,
-          message: 'Invalid "status" — expected "active", "inactive" or "suspended".',
-        });
-      }
-      landlord.status = req.body.status;
-    }
+    // (removed — profiles use the `isActive` boolean instead of a `status` string)
 
     // Preferences (contact method enum, timings, visits)
     if (req.body.preferences && typeof req.body.preferences === "object") {
@@ -820,7 +813,7 @@ const ADMIN_EDITABLE_FIELDS = [
   "preferences",
   "isVerified",
   "identityVerified",
-  "status",
+  "isActive",
   "featured",
   "metaTitle",
   "metaDescription",
