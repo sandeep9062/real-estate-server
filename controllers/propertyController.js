@@ -663,8 +663,11 @@ const updateProperty = asyncHandler(async (req, res) => {
   const isAdmin = req.user.role === "admin";
   const isOwner = property.user.toString() === req.user._id.toString();
   if (!isOwner && !isAdmin) {
-    res.status(401);
-    throw new Error("User not authorized");
+    return res.status(403).json({
+      success: false,
+      message: "Access denied. You don't own this property.",
+      code: "FORBIDDEN",
+    });
   }
 
   const {

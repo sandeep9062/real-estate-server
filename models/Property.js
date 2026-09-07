@@ -44,18 +44,6 @@ const propertySchema = new mongoose.Schema(
       index: true,
     },
 
-    seoTitle: { type: String, trim: true },
-    seoDescription: { type: String, trim: true },
-
-    ai: {
-      description: String,
-      matchScore: Number,
-      reasons: [String],
-      warning: String,
-      seoTitle: String,
-      seoDescription: String,
-    },
-
     type: {
       type: String,
       enum: ["Residential", "Commercial", "Industrial", "Agricultural"],
@@ -82,6 +70,17 @@ const propertySchema = new mongoose.Schema(
       index: true,
     },
 
+    seoTitle: { type: String, trim: true },
+    seoDescription: { type: String, trim: true },
+
+    ai: {
+      description: String,
+      matchScore: Number,
+      reasons: [String],
+      warning: String,
+      seoTitle: String,
+      seoDescription: String,
+    },
     /** Area is now split into carpetArea and superBuiltUpArea for RERA compliance.
      *  The legacy `area` field is kept as a top-level convenience for backward
      *  compatibility with existing data that hasn't been migrated yet. */
