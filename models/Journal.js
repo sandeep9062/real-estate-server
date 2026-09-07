@@ -11,6 +11,9 @@ const journalSchema = new mongoose.Schema(
     targetSector: String,
     metaTitle: String,
     keywords: [String],
+
+    views: { type: Number, default: 0 },
+
     isFeatured: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
   },
