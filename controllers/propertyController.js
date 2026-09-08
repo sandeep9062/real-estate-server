@@ -41,6 +41,13 @@ const LISTING_AVAIL = [
 ];
 const OC_STATUS = ["Available", "Applied", "Not issued", "NA"];
 const PROPERTY_STATUS = ["Active", "Sold", "Rented", "Inactive", "Review Required"];
+const TENANT_PREFERENCES = [
+  "Family",
+  "Bachelors",
+  "Any",
+  "Working Professionals",
+  "Students",
+];
 
 function parseOptionalNumber(v) {
   if (v === undefined || v === null || v === "") return undefined;
@@ -154,6 +161,7 @@ const createProperty = asyncHandler(async (req, res) => {
     securityDeposit,
     lockInMonths,
     noticePeriodDays,
+    tenantPreference,
     amenities: rawAmenities,
     ocStatus,
     ageOfProperty,
@@ -225,6 +233,10 @@ const createProperty = asyncHandler(async (req, res) => {
     securityDeposit: parseOptionalNumber(securityDeposit),
     lockInMonths: parseOptionalNumber(lockInMonths),
     noticePeriodDays: parseOptionalNumber(noticePeriodDays),
+    tenantPreference:
+      tenantPreference && TENANT_PREFERENCES.includes(String(tenantPreference))
+        ? String(tenantPreference)
+        : undefined,
     amenities,
     ocStatus:
       ocStatus && OC_STATUS.includes(String(ocStatus))
@@ -703,6 +715,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     securityDeposit,
     lockInMonths,
     noticePeriodDays,
+    tenantPreference,
     amenities: rawAmenities,
     ocStatus,
     ageOfProperty,
@@ -814,6 +827,12 @@ const updateProperty = asyncHandler(async (req, res) => {
   if (noticePeriodDays !== undefined && noticePeriodDays !== "") {
     const n = parseOptionalNumber(noticePeriodDays);
     if (n !== undefined) property.noticePeriodDays = n;
+  }
+  if (tenantPreference !== undefined) {
+    property.tenantPreference =
+      tenantPreference && TENANT_PREFERENCES.includes(String(tenantPreference))
+        ? String(tenantPreference)
+        : undefined;
   }
   if (ageOfProperty !== undefined && ageOfProperty !== "") {
     const a = parseOptionalNumber(ageOfProperty);
