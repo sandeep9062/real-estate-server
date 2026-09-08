@@ -165,7 +165,7 @@ const getMyPropertyBookings = async (req, res) => {
       .populate('user', 'name email phone')
       .populate({
         path: 'property',
-        select: 'title slug image deal price location',
+        select: 'title slug image deal price location postedBy',
       })
       .sort({ createdAt: -1 });
 

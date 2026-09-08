@@ -43,7 +43,17 @@ const roommateSchema = new mongoose.Schema(
     lifestyle: {
       profession: {
         type: String,
-        enum: ["student", "working_professional", "any"],
+        enum: [
+          "student",
+          "working_professional",
+          "business_owner",
+          "freelancer",
+          "self_employed",
+          "retired",
+          "unemployed",
+          "homemaker",
+          "any",
+        ],
         default: "any",
       },
       dietary: {

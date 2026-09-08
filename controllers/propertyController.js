@@ -434,14 +434,14 @@ const getProperties = asyncHandler(async (req, res) => {
 
     total = await Property.countDocuments(fallbackQuery);
     properties = await Property.find(fallbackQuery)
-      .populate("user", "name email phone")
+      .populate("user", "name email phone role")
       .sort({ isFeatured: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
       .lean();
   } else {
     properties = await Property.find(query)
-      .populate("user", "name email phone")
+      .populate("user", "name email phone role")
       .sort({ isFeatured: -1, createdAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -501,7 +501,7 @@ const getCompareProperties = asyncHandler(async (req, res) => {
     _id: { $in: ids },
     isActive: true,
     deletedAt: null,
-  }).populate("user", "name email phone");
+  }).populate("user", "name email phone role");
 
   const map = new Map(
     properties.map((p) => [
@@ -556,7 +556,7 @@ const getSimilarProperties = asyncHandler(async (req, res) => {
   }
 
   const list = await Property.find(query)
-    .populate("user", "name email phone")
+    .populate("user", "name email phone role")
     .sort({ createdAt: -1 })
     .limit(limit)
     .lean();
@@ -608,7 +608,7 @@ const getPropertyBySlug = asyncHandler(async (req, res) => {
     slug: req.params.slug,
     isActive: true,
     deletedAt: null,
-  }).populate("user", "name email phone");
+  }).populate("user", "name email phone role");
 
   if (property) {
     const propertyObj = transformPropertyCoordinates(property.toObject());
@@ -631,7 +631,7 @@ const getPropertyById = asyncHandler(async (req, res) => {
       slug: id,
       isActive: true,
       deletedAt: null,
-    }).populate("user", "name email phone");
+    }).populate("user", "name email phone role");
 
     if (property) {
       const propertyObj = transformPropertyCoordinates(property.toObject());
@@ -644,7 +644,7 @@ const getPropertyById = asyncHandler(async (req, res) => {
     _id: id,
     isActive: true,
     deletedAt: null,
-  }).populate("user", "name email phone");
+  }).populate("user", "name email phone role");
 
   if (property) {
     const propertyObj = transformPropertyCoordinates(property.toObject());
@@ -655,7 +655,7 @@ const getPropertyById = asyncHandler(async (req, res) => {
       slug: id,
       isActive: true,
       deletedAt: null,
-    }).populate("user", "name email phone");
+    }).populate("user", "name email phone role");
 
     if (slugProperty) {
       const propertyObj = transformPropertyCoordinates(slugProperty.toObject());
@@ -969,7 +969,9 @@ const getOwnedProperties = asyncHandler(async (req, res) => {
   const properties = await Property.find({
     user: req.user._id,
     deletedAt: null,
-  }).sort({ createdAt: -1 });
+  })
+    .populate("user", "name email phone role")
+    .sort({ createdAt: -1 });
   res.json(properties);
 });
 
