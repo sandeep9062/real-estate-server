@@ -163,6 +163,7 @@ const createProperty = asyncHandler(async (req, res) => {
     noticePeriodDays,
     tenantPreference,
     amenities: rawAmenities,
+    societyAmenities: rawSocietyAmenities,
     ocStatus,
     ageOfProperty,
     pricePerSqft,
@@ -193,6 +194,10 @@ const createProperty = asyncHandler(async (req, res) => {
   const amenitiesParsed = parseMaybeJson(rawAmenities);
   const amenities = Array.isArray(amenitiesParsed)
     ? amenitiesParsed.filter((x) => typeof x === "string")
+    : undefined;
+  const societyAmenitiesParsed = parseMaybeJson(rawSocietyAmenities);
+  const societyAmenities = Array.isArray(societyAmenitiesParsed)
+    ? societyAmenitiesParsed.filter((x) => typeof x === "string")
     : undefined;
   const negotiableVal = coerceBool(rawNegotiable);
 
@@ -238,6 +243,7 @@ const createProperty = asyncHandler(async (req, res) => {
         ? String(tenantPreference)
         : undefined,
     amenities,
+    societyAmenities,
     ocStatus:
       ocStatus && OC_STATUS.includes(String(ocStatus))
         ? String(ocStatus)
@@ -717,6 +723,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     noticePeriodDays,
     tenantPreference,
     amenities: rawAmenities,
+    societyAmenities: rawSocietyAmenities,
     ocStatus,
     ageOfProperty,
     pricePerSqft,
@@ -857,6 +864,12 @@ const updateProperty = asyncHandler(async (req, res) => {
     property.amenities = Array.isArray(am)
       ? am.filter((x) => typeof x === "string")
       : property.amenities;
+  }
+  if (rawSocietyAmenities !== undefined) {
+    const sa = parseMaybeJson(rawSocietyAmenities);
+    property.societyAmenities = Array.isArray(sa)
+      ? sa.filter((x) => typeof x === "string")
+      : property.societyAmenities;
   }
   if (videoUrl !== undefined) {
     property.videoUrl = videoUrl ? String(videoUrl).trim() : "";
