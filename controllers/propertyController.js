@@ -828,7 +828,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     const n = parseOptionalNumber(noticePeriodDays);
     if (n !== undefined) property.noticePeriodDays = n;
   }
-  if (tenantPreference !== undefined) {
+  if (tenantPreference !== undefined && tenantPreference !== "" && tenantPreference !== "undefined") {
     property.tenantPreference =
       tenantPreference && TENANT_PREFERENCES.includes(String(tenantPreference))
         ? String(tenantPreference)
