@@ -46,6 +46,7 @@ const TENANT_PREFERENCES = [
   "Bachelors",
   "Any",
   "Working Professionals",
+  "Students",
 ];
 const POSTED_BY = ["Owner", "Agent", "Builder"];
 const PREFERRED_CONTACT = ["Call", "WhatsApp", "Email"];

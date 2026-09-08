@@ -148,7 +148,7 @@ const propertySchema = new mongoose.Schema(
 
     tenantPreference: {
       type: String,
-      enum: ["Family", "Bachelors", "Any", "Working Professionals"],
+      enum: ["Family", "Bachelors", "Any", "Working Professionals", "Students"],
       default: "Any",
     },
 
