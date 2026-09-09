@@ -92,7 +92,10 @@ const roommateProfileSchema = new mongoose.Schema(
     searchArea: {
       location: {
         type: { type: String, enum: ["Point"], default: "Point" },
-        coordinates: [Number], // [lng, lat]
+        // [lng, lat]. Must ALWAYS be present — the 2dsphere index below
+        // cannot be built/queried when a doc has type: "Point" without
+        // coordinates ("Can't extract geo keys … got type missing").
+        coordinates: { type: [Number], default: [0, 0] },
       },
       locality: { type: String, trim: true },
       city: { type: String, trim: true, index: true },

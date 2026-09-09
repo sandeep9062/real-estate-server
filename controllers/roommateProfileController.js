@@ -3,6 +3,36 @@ import RoomFlat from "../models/RoomFlat.js";
 import User from "../models/User.js";
 
 /**
+ * Sanitizes searchArea before persistence. `location` may only be kept when
+ * it is a proper GeoJSON Point with a 2-element [lng, lat] coordinates array.
+ * A bare `{ type: "Point" }` (no coordinates) makes the `searchArea.location`
+ * 2dsphere index impossible to build/query and blows up writes with
+ * "Can't extract geo keys … Point must be an array or object,
+ * instead got type missing."
+ */
+function normalizeSearchArea(searchArea) {
+  if (!searchArea || typeof searchArea !== "object") return undefined;
+
+  const { location, ...rest } = searchArea;
+  const coords = location?.coordinates;
+
+  const hasValidCoords =
+    Array.isArray(coords) &&
+    coords.length === 2 &&
+    coords.every((c) => {
+      const n = Number(c);
+      return typeof n === "number" && Number.isFinite(n);
+    });
+
+  return {
+    ...rest,
+    ...(hasValidCoords
+      ? { location: { type: "Point", coordinates: coords.map(Number) } }
+      : {}),
+  };
+}
+
+/**
  * POST /api/roommates/profile
  * Creates the caller's RoommateProfile. One per user — the schema's
  * `unique: true` on `user` enforces this at the DB level too.
@@ -32,7 +62,7 @@ export async function createProfile(req, res) {
     const profile = await RoommateProfile.create({
       user: req.user._id,
       intent,
-      searchArea: needsSearchArea ? searchArea : undefined,
+      searchArea: needsSearchArea ? normalizeSearchArea(searchArea) : undefined,
       budgetRange: needsSearchArea ? budgetRange : undefined,
       ...profileFields,
     });
@@ -55,11 +85,18 @@ export async function createProfile(req, res) {
  */
 export async function updateProfile(req, res) {
   try {
-    const { documents, user, ...updatableFields } = req.body; // eslint-disable-line no-unused-vars
+    const { documents, user, searchArea, ...updatableFields } = req.body; // eslint-disable-line no-unused-vars
+
+    const update = {
+      ...updatableFields,
+      ...(searchArea !== undefined && {
+        searchArea: normalizeSearchArea(searchArea),
+      }),
+    };
 
     const profile = await RoommateProfile.findOneAndUpdate(
       { user: req.user._id },
-      { $set: updatableFields },
+      { $set: update },
       { new: true, runValidators: true },
     );
 
