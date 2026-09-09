@@ -49,6 +49,21 @@ const TENANT_PREFERENCES = [
   "Students",
 ];
 
+// Mirrors the postedBy enum in backend/models/Property.js.
+// postedBy is derived from the listing user's role — clients cannot set it
+// directly (admins use the dedicated admin endpoints for manual overrides).
+const ROLE_TO_POSTED_BY = {
+  agent: "Agent",
+  landlord: "Owner",
+  user: "Owner",
+  builder: "Builder",
+};
+
+function resolvePostedByForUser(user) {
+  const role = String(user?.role || "").toLowerCase();
+  return ROLE_TO_POSTED_BY[role] || "Owner";
+}
+
 function parseOptionalNumber(v) {
   if (v === undefined || v === null || v === "") return undefined;
   const n = Number(v);
@@ -147,7 +162,6 @@ const createProperty = asyncHandler(async (req, res) => {
     furnishing,
     facing,
     price,
-    postedBy,
     location: rawLocation,
     commercialPropertyTypes,
     investmentOptions,
@@ -212,7 +226,9 @@ const createProperty = asyncHandler(async (req, res) => {
     furnishing,
     facing,
     price,
-    postedBy,
+    // postedBy is derived from the authenticated user's role, not the request
+    // body — prevents spoofing "Agent listed" / "Owner listed" tags.
+    postedBy: resolvePostedByForUser(req.user),
     location,
     commercialPropertyTypes,
     investmentOptions,
@@ -699,7 +715,6 @@ const updateProperty = asyncHandler(async (req, res) => {
     furnishing,
     facing,
     price,
-    postedBy,
     location: rawLocation,
     commercialPropertyTypes,
     investmentOptions,
@@ -750,7 +765,9 @@ const updateProperty = asyncHandler(async (req, res) => {
   property.furnishing = furnishing || property.furnishing;
   property.facing = facing || property.facing;
   property.price = price || property.price;
-  property.postedBy = postedBy || property.postedBy;
+  // postedBy is re-derived from the authenticated user's role on every update —
+  // it is never taken from the request body.
+  property.postedBy = resolvePostedByForUser(req.user);
 
   const location =
     (typeof rawLocation === "string" ? JSON.parse(rawLocation) : rawLocation) ||
