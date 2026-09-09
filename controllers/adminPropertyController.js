@@ -194,8 +194,6 @@ function extractPropertyPayload(req) {
       ? String(b.projectId)
       : null;
   }
-  const isLandlord = coerceBool(b.isLandlordProperty);
-  if (isLandlord !== undefined) payload.isLandlordProperty = isLandlord;
 
   // Area (incl. carpet + super built-up)
   const area = parseMaybeJson(b.area);
@@ -240,10 +238,7 @@ function extractPropertyPayload(req) {
   payload.furnishing = enumValue(b.furnishing, FURNISHING);
   if (b.facing !== undefined) payload.facing = String(b.facing).trim();
   payload.tenantPreference = enumValue(b.tenantPreference, TENANT_PREFERENCES);
-  const pets = coerceBool(b.petsAllowed);
-  if (pets !== undefined) payload.petsAllowed = pets;
   payload.tags = toStringArray(b.tags);
-  payload.societyAmenities = toStringArray(b.societyAmenities);
   payload.amenities = toStringArray(b.amenities);
   payload.commercialPropertyTypes = toStringArray(b.commercialPropertyTypes);
   payload.investmentOptions = toStringArray(b.investmentOptions);

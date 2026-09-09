@@ -175,9 +175,11 @@ const createProperty = asyncHandler(async (req, res) => {
     securityDeposit,
     lockInMonths,
     noticePeriodDays,
+    allowsSubletting,
+    maxPersonsSharing,
+    petsAllowed,
     tenantPreference,
     amenities: rawAmenities,
-    societyAmenities: rawSocietyAmenities,
     ocStatus,
     ageOfProperty,
     pricePerSqft,
@@ -209,11 +211,9 @@ const createProperty = asyncHandler(async (req, res) => {
   const amenities = Array.isArray(amenitiesParsed)
     ? amenitiesParsed.filter((x) => typeof x === "string")
     : undefined;
-  const societyAmenitiesParsed = parseMaybeJson(rawSocietyAmenities);
-  const societyAmenities = Array.isArray(societyAmenitiesParsed)
-    ? societyAmenitiesParsed.filter((x) => typeof x === "string")
-    : undefined;
   const negotiableVal = coerceBool(rawNegotiable);
+  const allowsSublettingVal = coerceBool(allowsSubletting);
+  const petsAllowedVal = coerceBool(petsAllowed);
 
   const property = new Property({
     title,
@@ -250,16 +250,21 @@ const createProperty = asyncHandler(async (req, res) => {
       reraNumber != null && String(reraNumber).trim()
         ? String(reraNumber).trim()
         : undefined,
-    maintenanceCharge: parseOptionalNumber(maintenanceCharge),
-    securityDeposit: parseOptionalNumber(securityDeposit),
     lockInMonths: parseOptionalNumber(lockInMonths),
+    securityDeposit: parseOptionalNumber(securityDeposit),
     noticePeriodDays: parseOptionalNumber(noticePeriodDays),
+    allowsSubletting: allowsSublettingVal ?? false,
+    // Person count is only stored when subletting/room-sharing is allowed.
+    maxPersonsSharing:
+      allowsSublettingVal === true
+        ? parseOptionalNumber(maxPersonsSharing)
+        : undefined,
+    petsAllowed: petsAllowedVal ?? false,
     tenantPreference:
       tenantPreference && TENANT_PREFERENCES.includes(String(tenantPreference))
         ? String(tenantPreference)
         : undefined,
     amenities,
-    societyAmenities,
     ocStatus:
       ocStatus && OC_STATUS.includes(String(ocStatus))
         ? String(ocStatus)
@@ -359,7 +364,6 @@ const getProperties = asyncHandler(async (req, res) => {
       "tenantPreference",
       "ownershipType",
       "listingAvailability",
-      "petsAllowed",
       "isVerified",
       "builderName",
       "projectName",
@@ -736,9 +740,11 @@ const updateProperty = asyncHandler(async (req, res) => {
     securityDeposit,
     lockInMonths,
     noticePeriodDays,
+    allowsSubletting,
+    maxPersonsSharing,
+    petsAllowed,
     tenantPreference,
     amenities: rawAmenities,
-    societyAmenities: rawSocietyAmenities,
     ocStatus,
     ageOfProperty,
     pricePerSqft,
@@ -852,6 +858,24 @@ const updateProperty = asyncHandler(async (req, res) => {
     const n = parseOptionalNumber(noticePeriodDays);
     if (n !== undefined) property.noticePeriodDays = n;
   }
+  if (allowsSubletting !== undefined && allowsSubletting !== "") {
+    const sublet = coerceBool(allowsSubletting);
+    if (sublet !== undefined) {
+      property.allowsSubletting = sublet;
+      // Un-checking the box clears any stored sharing capacity.
+      if (!sublet) property.maxPersonsSharing = undefined;
+    }
+  }
+  if (maxPersonsSharing !== undefined && maxPersonsSharing !== "") {
+    const mp = parseOptionalNumber(maxPersonsSharing);
+    if (mp !== undefined && property.allowsSubletting) {
+      property.maxPersonsSharing = mp;
+    }
+  }
+  if (petsAllowed !== undefined && petsAllowed !== "") {
+    const pets = coerceBool(petsAllowed);
+    if (pets !== undefined) property.petsAllowed = pets;
+  }
   if (tenantPreference !== undefined && tenantPreference !== "" && tenantPreference !== "undefined") {
     property.tenantPreference =
       tenantPreference && TENANT_PREFERENCES.includes(String(tenantPreference))
@@ -881,12 +905,6 @@ const updateProperty = asyncHandler(async (req, res) => {
     property.amenities = Array.isArray(am)
       ? am.filter((x) => typeof x === "string")
       : property.amenities;
-  }
-  if (rawSocietyAmenities !== undefined) {
-    const sa = parseMaybeJson(rawSocietyAmenities);
-    property.societyAmenities = Array.isArray(sa)
-      ? sa.filter((x) => typeof x === "string")
-      : property.societyAmenities;
   }
   if (videoUrl !== undefined) {
     property.videoUrl = videoUrl ? String(videoUrl).trim() : "";

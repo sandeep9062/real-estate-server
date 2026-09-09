@@ -23,7 +23,6 @@ export function buildPropertyFindQuery(reqQuery) {
     facing,
     tenantPreference,
     ownershipType,
-    petsAllowed,
     floorMin,
     floorMax,
     totalFloors,
@@ -130,13 +129,6 @@ export function buildPropertyFindQuery(reqQuery) {
   /* ── Ownership Type ── */
   if (ownershipType) {
     query.ownershipType = ownershipType;
-  }
-
-  /* ── Pets Allowed ── */
-  if (petsAllowed === "true") {
-    query.petsAllowed = true;
-  } else if (petsAllowed === "false") {
-    query.petsAllowed = false;
   }
 
   /* ── Floor range ── */

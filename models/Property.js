@@ -26,14 +26,11 @@ const propertySchema = new mongoose.Schema(
     title: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
     slug: { type: String, unique: true, sparse: true, trim: true },
+
     projectId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Project",
       default: null,
-    },
-    isLandlordProperty: {
-      type: Boolean,
-      default: true,
     },
 
     /** Rent = monthly rent; Sale = total asking price (INR). */
@@ -90,6 +87,7 @@ const propertySchema = new mongoose.Schema(
         type: String,
         enum: ["sqft", "sqyard", "sqm", "marla", "kanal", "acre"],
       },
+
       /** Carpet area (as mandated by RERA) — the net usable floor area. */
       carpetArea: {
         value: { type: Number, min: 0 },
@@ -98,6 +96,7 @@ const propertySchema = new mongoose.Schema(
           enum: ["sqft", "sqyard", "sqm", "marla", "kanal", "acre"],
         },
       },
+
       /** Super built-up area — includes common areas, walls, etc. Builders typically quote this. */
       superBuiltUpArea: {
         value: { type: Number, min: 0 },
@@ -152,11 +151,6 @@ const propertySchema = new mongoose.Schema(
       default: "Any",
     },
 
-    petsAllowed: {
-      type: Boolean,
-      default: false,
-    },
-
     tags: [{ type: String, trim: true }],
 
     price: { type: Number, min: 0, required: true, index: true },
@@ -177,6 +171,26 @@ const propertySchema = new mongoose.Schema(
     lockInMonths: { type: Number, min: 0 },
     noticePeriodDays: { type: Number, min: 0 },
 
+    /** Rent: does the owner allow subletting / room-sharing? */
+    allowsSubletting: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    /** Rent: how many persons can share the property (only when allowed). */
+    maxPersonsSharing: {
+      type: Number,
+      min: 1,
+    },
+
+    /** Rent: are pets allowed in the property? */
+    petsAllowed: {
+      type: Boolean,
+      default: false,
+    },
+
+    // project and builder details
     projectName: {
       type: String,
       index: true,
@@ -191,9 +205,7 @@ const propertySchema = new mongoose.Schema(
 
     totalUnits: Number,
 
-    societyAmenities: [{ type: String, trim: true }],
-
-    /** Generic checklist (lift, gym, etc.) — overlaps societyAmenities; both supported. */
+    /** Generic checklist (lift, gym, etc.). */
     amenities: [{ type: String, trim: true }],
 
     pricePerSqft: {
@@ -287,12 +299,6 @@ const propertySchema = new mongoose.Schema(
 
     floorPlanImages: [{ type: String, trim: true }],
 
-    isFeatured: {
-      type: Boolean,
-      default: false,
-      index: true,
-    },
-
     featuredUntil: Date,
 
     views: {
@@ -307,6 +313,11 @@ const propertySchema = new mongoose.Schema(
       min: 0,
     },
 
+    isFeatured: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
     isVerified: { type: Boolean, default: false, index: true },
 
     isActive: { type: Boolean, default: true, index: true },
@@ -382,10 +393,10 @@ propertySchema.index({
 propertySchema.index({ deal: 1, price: 1 });
 propertySchema.index({ type: 1, propertyCategory: 1 });
 propertySchema.index({ createdAt: -1 });
-propertySchema.index({ status: 1, createdAt: -1 });
-propertySchema.index({ "location.city": 1, status: 1, createdAt: -1 });
-propertySchema.index({ "location.sector": 1, status: 1 });
-propertySchema.index({ "location.state": 1, status: 1 });
+propertySchema.index({ isActive: 1, createdAt: -1 });
+propertySchema.index({ "location.city": 1, isActive: 1, createdAt: -1 });
+propertySchema.index({ "location.sector": 1, isActive: 1 });
+propertySchema.index({ "location.state": 1, isActive: 1 });
 
 propertySchema.virtual("id").get(function () {
   return this._id.toHexString();
@@ -393,6 +404,27 @@ propertySchema.virtual("id").get(function () {
 
 propertySchema.set("toJSON", {
   virtuals: true,
+});
+
+/**
+ * Abuse guard: when an account already has 2+ "Owner"-tagged listings, a new
+ * owner-tagged listing is the 3rd+ — flag it in adminNotes and park it in
+ * "Review Required" so admins can verify before it goes live.
+ */
+propertySchema.pre("save", async function () {
+  if (this.isNew && this.postedBy === "Owner" && this.user) {
+    const existingOwnerListings = await this.constructor.countDocuments({
+      user: this.user,
+      postedBy: "Owner",
+      _id: { $ne: this._id },
+    });
+    if (existingOwnerListings >= 2) {
+      this.adminNotes =
+        (this.adminNotes ? `${this.adminNotes} ` : "") +
+        "[Flagged: 3rd+ owner-tagged listing from this account]";
+      this.listingAvailability = "Review Required";
+    }
+  }
 });
 
 const Property = mongoose.model("Property", propertySchema);
