@@ -1,6 +1,6 @@
 import express from "express";
-import { protect } from "../middleware/authMiddleware.js"; // adjust to your actual auth middleware path/name
-import { restrictToResidents } from "../middleware/restrictToResidents.js";
+import { protect } from "../middlewares/authMiddleware.js"; // adjust to your actual auth middleware path/name
+import { restrictToResidents } from "../middlewares/restrictToResidents.js"; // adjust to your actual middleware path/name
 
 import {
   createProfile,
