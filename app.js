@@ -123,7 +123,7 @@ app.use("/api/visit-reviews", visitReviewRoutes);
 app.use("/api/v1/journals", journalRoutes);
 app.use("/api/agents", agentRoutes);
 app.use("/api/landlords", landlordRoutes);
-app.use("/api/roommates", roommateRoutes);
+app.use("/api/v1/roommates", roommateRoutes);
 app.use("/api/leads", leadRoutes);
 
 app.use("/api/v1/contacts", contactRoutes);

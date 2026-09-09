@@ -77,9 +77,20 @@ const userSchema = mongoose.Schema(
     ownedProperties: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
     ],
+
+    // Roommate feature — single ref to the user's one RoommateProfile.
+    // (The old `flatmateListings` array pointing at the now-deleted
+    // FlatmateListing model has been removed — RoomFlat documents are
+    // reached via roommateProfile.roomFlat instead.)
+    roommateProfile: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RoommateProfile",
+    },
+
     resetPasswordToken: String,
     resetPasswordExpire: Date,
   },
+
   {
     timestamps: true,
   },
