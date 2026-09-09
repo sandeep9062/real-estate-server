@@ -184,6 +184,29 @@ const propertySchema = new mongoose.Schema(
       min: 1,
     },
 
+    /**
+     * Rent-only house rules for shared/subletted stays. Enforced at the schema
+     * level (see the pre("validate") hook below): the field is stripped unless
+     * deal === "Rent" AND allowsSubletting === true.
+     */
+    houseRules: {
+      ownerLivesOnPremises: Boolean,
+      curfew: {
+        hasCurfew: { type: Boolean, default: false },
+        time: { type: String, trim: true },
+      },
+      oppositeGenderGuestsAllowed: {
+        type: String,
+        enum: ["allowed", "allowed_with_notice", "not_allowed"],
+      },
+      overnightGuestsAllowed: {
+        type: String,
+        enum: ["allowed", "allowed_with_notice", "not_allowed"],
+      },
+      smokingAllowedOnPremises: Boolean,
+      drinkingAllowedOnPremises: Boolean,
+    },
+
     /** Rent: are pets allowed in the property? */
     petsAllowed: {
       type: Boolean,
@@ -404,6 +427,18 @@ propertySchema.virtual("id").get(function () {
 
 propertySchema.set("toJSON", {
   virtuals: true,
+});
+
+/**
+ * houseRules only apply to rental listings that explicitly allow
+ * subletting / room-sharing. Stripped before validation runs so a direct
+ * API call can never persist them on the wrong listing type — and so an
+ * otherwise-valid request isn't rejected with a confusing enum error.
+ */
+propertySchema.pre("validate", function () {
+  if (!(this.deal === "Rent" && this.allowsSubletting)) {
+    this.houseRules = undefined;
+  }
 });
 
 /**

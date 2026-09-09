@@ -180,6 +180,7 @@ const createProperty = asyncHandler(async (req, res) => {
     petsAllowed,
     tenantPreference,
     amenities: rawAmenities,
+    houseRules: rawHouseRules,
     ocStatus,
     ageOfProperty,
     pricePerSqft,
@@ -211,6 +212,11 @@ const createProperty = asyncHandler(async (req, res) => {
   const amenities = Array.isArray(amenitiesParsed)
     ? amenitiesParsed.filter((x) => typeof x === "string")
     : undefined;
+  const houseRulesParsed = parseMaybeJson(rawHouseRules);
+  const houseRules =
+    houseRulesParsed && typeof houseRulesParsed === "object" && !Array.isArray(houseRulesParsed)
+      ? houseRulesParsed
+      : undefined;
   const negotiableVal = coerceBool(rawNegotiable);
   const allowsSublettingVal = coerceBool(allowsSubletting);
   const petsAllowedVal = coerceBool(petsAllowed);
@@ -265,6 +271,7 @@ const createProperty = asyncHandler(async (req, res) => {
         ? String(tenantPreference)
         : undefined,
     amenities,
+    houseRules,
     ocStatus:
       ocStatus && OC_STATUS.includes(String(ocStatus))
         ? String(ocStatus)
@@ -745,6 +752,7 @@ const updateProperty = asyncHandler(async (req, res) => {
     petsAllowed,
     tenantPreference,
     amenities: rawAmenities,
+    houseRules: rawHouseRules,
     ocStatus,
     ageOfProperty,
     pricePerSqft,
@@ -905,6 +913,13 @@ const updateProperty = asyncHandler(async (req, res) => {
     property.amenities = Array.isArray(am)
       ? am.filter((x) => typeof x === "string")
       : property.amenities;
+  }
+  if (rawHouseRules !== undefined) {
+    const hr = parseMaybeJson(rawHouseRules);
+    // Object shape is validated by the schema enums; applicability (Rent +
+    // allowsSubletting only) is enforced by the pre("validate") hook.
+    property.houseRules =
+      hr && typeof hr === "object" && !Array.isArray(hr) ? hr : undefined;
   }
   if (videoUrl !== undefined) {
     property.videoUrl = videoUrl ? String(videoUrl).trim() : "";
