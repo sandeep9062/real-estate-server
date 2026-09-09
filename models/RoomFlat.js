@@ -27,6 +27,7 @@ const locationSchema = new mongoose.Schema({
   sector: { type: String, index: true, trim: true },
   state: { type: String, index: true, trim: true },
   country: { type: String, trim: true },
+  slug: { type: String, unique: true, sparse: true, trim: true },
   pincode: { type: String, trim: true },
   landmark: { type: String, trim: true },
   coordinates: {
@@ -34,6 +35,7 @@ const locationSchema = new mongoose.Schema({
     coordinates: { type: [Number], default: [0, 0] },
   },
 });
+
 locationSchema.index({ coordinates: "2dsphere" });
 
 const roomFlatSchema = new mongoose.Schema(
