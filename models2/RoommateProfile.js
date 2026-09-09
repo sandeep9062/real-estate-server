@@ -3,19 +3,22 @@ import mongoose from "mongoose";
 /**
  * RoommateProfile
  *
- * One profile per user participating in the flatmate feature. Kept as its
- * own collection (not embedded on User) for two reasons:
- *  1. Security: verification documents need stricter, narrower access
- *     control than the rest of a user's account — easy to enforce when
- *     they live in a collection you can gate entirely, hard to enforce
- *     when they're a field buried in a document that gets fetched often.
- *  2. Most users never touch this feature — keeping it separate means the
- *     core User document (fetched on every request) stays small.
+ * One profile per user participating in the flatmate feature — the
+ * universal record. Everyone using the feature has exactly one of these,
+ * regardless of intent.
  *
  * A profile with intent "has_room" / "swap" / "temporary_offer" links to a
  * RoomFlat document (the actual property). A profile with intent
  * "seeking_room" / "temporary_seek" has no property — it searches by
  * `searchArea` + `budgetRange` directly on this document instead.
+ *
+ * Kept as its own collection (not embedded on User) because:
+ *  1. Verification documents need stricter, narrower access control than
+ *     the rest of a user's account — easy to enforce in a dedicated
+ *     collection, hard to enforce as a buried field on a frequently
+ *     fetched User document.
+ *  2. Most users never touch this feature — keeping it separate means the
+ *     core User document stays small.
  */
 
 const documentSchema = new mongoose.Schema(
@@ -25,16 +28,14 @@ const documentSchema = new mongoose.Schema(
       enum: ["aadhaar", "passport", "driving_license", "voter_id", "other"],
       required: true,
     },
-    // Store only a masked/last-4 reference for display, NEVER the full
-    // number in plaintext. If you need the full number for verification,
-    // encrypt it at the application layer before saving, or better, don't
-    // store it at all — verify via the file upload alone.
+    // Masked reference only — NEVER the full ID number in plaintext.
+    // Encrypt at the application layer if the full number is ever needed.
     lastFourDigits: {
       type: String,
       maxlength: 4,
     },
-    // Path/key into your private file storage (e.g. a private S3 bucket),
-    // never a public URL. Serve via short-lived signed URLs on demand.
+    // Path/key into PRIVATE file storage, never a public URL. Serve via
+    // short-lived signed URLs generated on demand.
     fileKey: {
       type: String,
       required: true,
@@ -185,7 +186,14 @@ const roommateProfileSchema = new mongoose.Schema(
     },
 
     // ---- Verification ----
-    documents: [documentSchema],
+    // select: false — documents never come back on a normal .find()/.findById()
+    // unless a query explicitly does .select('+documents'). This is enforced
+    // independently of the toJSON strip below, so it also protects .lean()
+    // queries, which bypass toJSON entirely.
+    documents: {
+      type: [documentSchema],
+      select: false,
+    },
     idVerified: {
       type: Boolean,
       default: false, // set true only when at least one document is "verified"
@@ -263,9 +271,10 @@ roommateProfileSchema.methods.matchScoreAgainst = function (otherProfile) {
   return Math.round((matched / total) * 100);
 };
 
-// Never expose documents (file keys, verification metadata) in normal API
-// responses — only an explicit admin/owner-scoped query should populate
-// this field. Default toJSON strips it entirely.
+// Belt-and-suspenders: even though `documents` has select: false, strip it
+// again here in case a future query explicitly opts it back in with
+// .select('+documents') for an admin view but still ends up serializing
+// through a shared public-facing response path by mistake.
 roommateProfileSchema.methods.toJSON = function () {
   const obj = this.toObject();
   delete obj.documents;

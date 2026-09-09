@@ -6,13 +6,35 @@ import mongoose from "mongoose";
  * The physical-property record for the flatmate feature. Only created
  * when the associated RoommateProfile's intent is "has_room", "swap", or
  * "temporary_offer" — profiles that are just searching (seeking_room,
- * temporary_seek) never get one of these, since there's no property to
- * describe yet.
+ * temporary_seek) never get one of these.
  *
- * Deliberately mirrors your Property model's location convention where
- * possible (GeoJSON Point) so nearby-search logic can eventually be
- * shared between the two features.
+ * `intent` is denormalized from the parent RoommateProfile at creation
+ * time. This is deliberate duplication: RoomFlat is the collection you run
+ * geo queries against for public browse/search, and Mongo can't combine
+ * $geoWithin/$near with a filter on a populated field in a single query.
+ * Keeping intent here means the browse-by-location query never needs to
+ * populate roommateProfile just to know what kind of listing it's looking
+ * at.
  */
+
+// Reuse the exact location shape used on Property.js so geo-query patterns
+// stay consistent across both collections. Import from Property.js if it's
+// exported there (`export { locationSchema }`) rather than redefining it —
+// shown inline here for portability.
+const locationSchema = new mongoose.Schema({
+  address: { type: String, required: true, trim: true },
+  city: { type: String, index: true, trim: true },
+  sector: { type: String, index: true, trim: true },
+  state: { type: String, index: true, trim: true },
+  country: { type: String, trim: true },
+  pincode: { type: String, trim: true },
+  landmark: { type: String, trim: true },
+  coordinates: {
+    type: { type: String, enum: ["Point"], default: "Point" },
+    coordinates: { type: [Number], default: [0, 0] },
+  },
+});
+locationSchema.index({ coordinates: "2dsphere" });
 
 const roomFlatSchema = new mongoose.Schema(
   {
@@ -30,17 +52,30 @@ const roomFlatSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
+    // Denormalized for quick filtering in browse/search queries without a
+    intent: {
+      type: String,
+      enum: [
+        "has_room",
+        "seeking_room",
+        "swap",
+        "temporary_offer",
+        "temporary_seek",
+        "subletting_out",
+      ],
+      required: true,
+      index: true,
+    },
+
+    openToSwap: {
+      type: Boolean,
+      default: false, // only meaningful when intent === "has_room" — "I'd also consider swapping"
+    },
 
     title: { type: String, required: true, trim: true },
     description: { type: String, trim: true },
 
-    location: {
-      type: { type: String, enum: ["Point"], default: "Point" },
-      coordinates: { type: [Number], required: true }, // [lng, lat]
-      address: { type: String, trim: true },
-      locality: { type: String, trim: true, index: true },
-      city: { type: String, trim: true, index: true },
-    },
+    location: locationSchema,
 
     rentAmount: { type: Number, min: 0, required: true },
     securityDeposit: { type: Number, min: 0 },
@@ -57,7 +92,32 @@ const roomFlatSchema = new mongoose.Schema(
     minStayMonths: { type: Number, min: 0 },
     photos: [{ type: String }],
 
-    // Only meaningful when the parent RoommateProfile.intent === "swap"
+    // Disclosures about the shared-living situation — always relevant here
+    // (unlike on Property.js, where it's conditional on allowsSubletting),
+    // since every RoomFlat is inherently a sharing arrangement.
+    houseRules: {
+      ownerLivesOnPremises: Boolean,
+      curfew: {
+        hasCurfew: { type: Boolean, default: false },
+        time: { type: String },
+      },
+      oppositeGenderGuestsAllowed: {
+        type: String,
+        enum: ["allowed", "allowed_with_notice", "not_allowed"],
+      },
+      overnightGuestsAllowed: {
+        type: String,
+        enum: ["allowed", "allowed_with_notice", "not_allowed"],
+      },
+      smokingAllowedOnPremises: Boolean,
+      drinkingAllowedOnPremises: Boolean,
+    },
+    petsAllowed: {
+      type: Boolean,
+      default: false,
+    },
+
+    // Only meaningful when intent === "swap"
     swapDetails: {
       desiredLocality: { type: String, trim: true },
       desiredCity: { type: String, trim: true },
@@ -89,8 +149,33 @@ const roomFlatSchema = new mongoose.Schema(
   },
 );
 
-roomFlatSchema.index({ location: "2dsphere" });
-roomFlatSchema.index({ status: 1, city: 1 });
+roomFlatSchema.index({ intent: 1, status: 1, "location.city": 1 });
+
+// Post-match reputation, filled in after a connection has actually played
+// out — never self-reported by the owner. See ownerReviewSchema below.
+const ownerReviewSchema = new mongoose.Schema(
+  {
+    roomFlat: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "RoomFlat",
+      required: true,
+      index: true,
+    },
+    reviewer: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+    },
+    involvementLevel: {
+      type: String,
+      enum: ["very_hands_off", "occasional_checkins", "frequently_involved"],
+    },
+    comment: { type: String, trim: true, maxlength: 300 },
+  },
+  { timestamps: true },
+);
+
+export const OwnerReview = mongoose.model("OwnerReview", ownerReviewSchema);
 
 const RoomFlat = mongoose.model("RoomFlat", roomFlatSchema);
 
