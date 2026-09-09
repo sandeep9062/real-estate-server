@@ -1,6 +1,7 @@
 import express from "express";
 import { protect } from "../middlewares/authMiddleware.js"; // adjust to your actual auth middleware path/name
 import { restrictToResidents } from "../middlewares/restrictToResidents.js"; // adjust to your actual middleware path/name
+import upload from "../middlewares/multer.js"; // multer-cloudinary for photo/video uploads
 
 import {
   createProfile,
@@ -37,8 +38,22 @@ router.post("/profile/documents", protect, restrictToResidents, uploadDocument);
 router.get("/seekers", protect, searchSeekers);
 
 // ---- Room/Flat ----
-router.post("/room-flat", protect, restrictToResidents, createRoomFlat);
-router.patch("/room-flat/:id", protect, restrictToResidents, updateRoomFlat);
+// upload.array("photos") accepts new photo/video uploads (Cloudinary via
+// multer) and is a no-op for plain JSON requests without files.
+router.post(
+  "/room-flat",
+  protect,
+  restrictToResidents,
+  upload.array("photos"),
+  createRoomFlat,
+);
+router.patch(
+  "/room-flat/:id",
+  protect,
+  restrictToResidents,
+  upload.array("photos"),
+  updateRoomFlat,
+);
 router.get("/browse", protect, browseRoomsAndFlats);
 router.get("/swap-matches", protect, searchSwapMatches);
 

@@ -28,8 +28,28 @@ export async function createRoomFlat(req, res) {
       });
     }
 
+    // Both request shapes are accepted:
+    //  - JSON body (no new photo files)
+    //  - Multipart (new photos picked via PhotosLocationFlat): the JSON body
+    //    arrives stringified in `payload` while files land in req.files via
+    //    the multer-cloudinary middleware on the "photos" field.
+    let body = req.body;
+    if (typeof body?.payload === "string") {
+      try {
+        body = JSON.parse(body.payload);
+      } catch {
+        // Malformed payload string — fall through with the raw body.
+      }
+    }
+
+    const uploadedPhotos = (req.files || []).map((file) => file.path);
+    const keptPhotos = Array.isArray(body.photos)
+      ? body.photos.filter((photo) => typeof photo === "string")
+      : [];
+
     const roomFlat = await RoomFlat.create({
-      ...req.body,
+      ...body,
+      photos: [...keptPhotos, ...uploadedPhotos],
       roommateProfile: profile._id,
       owner: req.user._id,
       intent: profile.intent, // denormalized — always taken from the profile, never trusted from the body
@@ -52,11 +72,32 @@ export async function createRoomFlat(req, res) {
  */
 export async function updateRoomFlat(req, res) {
   try {
-    const { intent, owner, roommateProfile, ...updatableFields } = req.body; // eslint-disable-line no-unused-vars
+    // Accepts a JSON body or multipart (photos): with files attached the JSON
+    // body arrives stringified in `payload` (see createRoomFlat).
+    let updatableFields = { ...req.body };
+    if (typeof req.body?.payload === "string") {
+      try {
+        updatableFields = JSON.parse(req.body.payload);
+      } catch {
+        // Malformed payload string — fall through with the raw body.
+      }
+    }
+    delete updatableFields.payload;
+    const { intent, owner, roommateProfile, ...fields } = updatableFields; // eslint-disable-line no-unused-vars
+
+    // Newly uploaded photos (Cloudinary URLs from multer) are appended to any
+    // kept URLs sent in the body.
+    const uploadedPhotos = (req.files || []).map((file) => file.path);
+    if (uploadedPhotos.length) {
+      const keptPhotos = Array.isArray(fields.photos)
+        ? fields.photos.filter((photo) => typeof photo === "string")
+        : [];
+      fields.photos = [...keptPhotos, ...uploadedPhotos];
+    }
 
     const roomFlat = await RoomFlat.findOneAndUpdate(
       { _id: req.params.id, owner: req.user._id },
-      { $set: updatableFields },
+      { $set: fields },
       { new: true, runValidators: true },
     );
 
