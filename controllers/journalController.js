@@ -61,7 +61,9 @@ const createJournal = asyncHandler(async (req, res) => {
 // @access  Public
 const getJournals = asyncHandler(async (req, res) => {
   const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 12;
+  // Cap the page size so a client can never force the DB to return/index an
+  // unbounded number of full documents in a single request.
+  const limit = Math.min(parseInt(req.query.limit) || 100, 100);
   const skip = (page - 1) * limit;
 
   // Build optional filter based on query params
@@ -74,10 +76,16 @@ const getJournals = asyncHandler(async (req, res) => {
   }
 
   const total = await Journal.countDocuments(filter);
+  // CRITICAL for load speed: exclude the full HTML `content` body from list
+  // responses. Cards never render it, and 100 full article bodies can be
+  // megabytes of JSON/HTML that delay first paint (detail pages fetch the
+  // content via the slug endpoint instead).
   const journals = await Journal.find(filter)
+    .select("-content")
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit)
+    .lean();
 
   res.json({
     journals,

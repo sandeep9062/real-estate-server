@@ -20,6 +20,11 @@ const journalSchema = new mongoose.Schema(
   { timestamps: true },
 );
 
+// Speed up the public list endpoint (GET /api/v1/journals), which filters
+// on `isActive` and sorts by `createdAt` desc before skip/limit pagination —
+// without this the DB does a full collection sort on every page request.
+journalSchema.index({ isActive: 1, createdAt: -1 });
+
 const Journal = mongoose.model("Journal", journalSchema);
 
 export default Journal;

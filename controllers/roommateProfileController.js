@@ -87,11 +87,44 @@ export async function updateProfile(req, res) {
   try {
     const { documents, user, searchArea, ...updatableFields } = req.body; // eslint-disable-line no-unused-vars
 
+    const existing = await RoommateProfile.findOne({ user: req.user._id });
+    if (!existing) {
+      return res.status(404).json({ message: "Profile not found." });
+    }
+
+    // Spread of a Mongoose subdocument keeps values but breaks boolean-vs-doc
+    // identity in a few edge cases; converting to a plain object first keeps
+    // the merge predictable. Blanks mean "cleared" — drop them so enum
+    // validators never see "".
+    const savedHabits = existing.habits?.toObject?.() ?? existing.habits ?? {};
+    const incomingHabits = updatableFields.habits ?? {};
+    const mergedHabits = { ...savedHabits };
+    for (const [key, value] of Object.entries(incomingHabits)) {
+      if (value === "" || value === null) {
+        delete mergedHabits[key];
+      } else {
+        mergedHabits[key] = value;
+      }
+    }
+    if (updatableFields.habits) {
+      updatableFields.habits = mergedHabits;
+    }
+
+    const isComplete = Boolean(
+      (updatableFields.gender ?? existing.gender) &&
+        (updatableFields.occupation ?? existing.occupation) &&
+        mergedHabits.smoking &&
+        mergedHabits.drinking &&
+        mergedHabits.foodPreference &&
+        mergedHabits.cleanlinessLevel,
+    );
+
     const update = {
       ...updatableFields,
       ...(searchArea !== undefined && {
         searchArea: normalizeSearchArea(searchArea),
       }),
+      isComplete,
     };
 
     const profile = await RoommateProfile.findOneAndUpdate(
@@ -118,7 +151,9 @@ export async function getOwnProfile(req, res) {
   try {
     const profile = await RoommateProfile.findOne({
       user: req.user._id,
-    }).select("+documents");
+    })
+      .select("+documents")
+      .populate("roomFlat");
 
     if (!profile) {
       return res.status(404).json({ message: "Profile not found." });
