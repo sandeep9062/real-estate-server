@@ -23,8 +23,15 @@ export async function createRoomFlat(req, res) {
       });
     }
     if (profile.roomFlat) {
+      // One profile = one listing. 409 with the existing document attached so
+      // a client that re-POSTs (double-submit, retry after a lost response,
+      // re-running onboarding without ?edit=1) can PATCH the existing listing
+      // instead of dead-ending on the conflict.
+      const existing = await RoomFlat.findById(profile.roomFlat);
       return res.status(409).json({
         message: "This profile already has a room/flat listed.",
+        existingRoomFlat: existing ?? null,
+        existingRoomFlatId: profile.roomFlat,
       });
     }
 
