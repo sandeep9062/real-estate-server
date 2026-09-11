@@ -136,7 +136,7 @@ export async function listMyConnections(req, res) {
 
     // Explicitly serialize populated fields to plain objects with string IDs
     // so the frontend can reliably compare IDs with === against string values.
-    const serialized = connections.map((c: Record<string, unknown>) => ({
+    const serialized = connections.map((c) => ({
       ...c,
       _id: String(c._id),
       fromProfile:
