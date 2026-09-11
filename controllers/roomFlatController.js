@@ -172,9 +172,10 @@ export async function browseRoomsAndFlats(req, res) {
 
 /**
  * GET /api/roommates/swap-matches
- * Reciprocal-fit search: shows the caller's swap listing other swap
- * listings where each side's location plausibly fits the other's desired
- * area. Kept off the general browse endpoint on purpose (see module doc).
+ * Reciprocal-fit search: shows the caller's listing other listings where
+ * each side has `openToSwap: true` and each side's location plausibly fits
+ * the other's desired area. Kept off the general browse endpoint on purpose
+ * (see module doc).
  */
 export async function searchSwapMatches(req, res) {
   try {
@@ -186,9 +187,10 @@ export async function searchSwapMatches(req, res) {
     }
 
     const myRoomFlat = await RoomFlat.findById(myProfile.roomFlat);
-    if (!myRoomFlat.openToSwap) {
+    if (!myRoomFlat || !myRoomFlat.openToSwap) {
       return res.status(400).json({
-        message: "Enable openToSwap on your listing to search for swap matches.",
+        message:
+          "Enable “Open to swapping” on your listing to search for swap matches.",
       });
     }
 

@@ -99,6 +99,7 @@ const roomFlatSchema = new mongoose.Schema(
       smokingAllowedOnPremises: Boolean,
       drinkingAllowedOnPremises: Boolean,
     },
+
     petsAllowed: {
       type: Boolean,
       default: false,
@@ -108,6 +109,7 @@ const roomFlatSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+
     swapDetails: {
       desiredLocality: { type: String, trim: true },
       desiredCity: { type: String, trim: true },
