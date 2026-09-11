@@ -505,3 +505,59 @@ export const toggleFavRoommate = async (req, res) => {
 };
 
 export const cancelVisit = async (req, res) => {
+  try {
+    const { propertyId } = req.params;
+    const userId = req.user._id;
+
+    if (!propertyId) {
+      return res.status(400).json({ message: "Property ID is required" });
+    }
+
+    // Find and delete the booking
+    const booking = await Booking.findOneAndDelete({
+      user: userId,
+      property: propertyId,
+    }).populate("property").populate("user");
+
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+
+    // Optionally notify the property owner
+    try {
+      const property = booking.property;
+      if (property && property.user) {
+        await createNotification({
+          userId: property.user,
+          title: "Visit Cancelled",
+          message: `Your visit booking for "${property.title}" has been cancelled.`,
+          type: "info",
+          category: "booking",
+          priority: "low",
+          metadata: {
+            bookingId: booking._id,
+            propertyId,
+            userId,
+          },
+        });
+      }
+    } catch (notificationError) {
+      console.error("Error creating cancellation notification:", notificationError);
+    }
+
+    // Notify via email
+    notifyVisitCancelledEmails({
+      visitorEmail: booking.user?.email || "",
+      visitorName: booking.user?.name || "",
+      propertyTitle: booking.property?.title || "",
+      visitDate: booking.date,
+    }).catch((err) =>
+      console.warn("Cancellation notification emails skipped:", err.message),
+    );
+
+    res.status(200).json({ message: "Visit cancelled successfully" });
+  } catch (error) {
+    console.error("Cancel visit error:", error);
+    res.status(500).json({ message: "Server Error" });
+  }
+};
