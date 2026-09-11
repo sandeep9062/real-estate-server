@@ -24,12 +24,50 @@ function normalizeSearchArea(searchArea) {
       return typeof n === "number" && Number.isFinite(n);
     });
 
-  return {
+    return {
     ...rest,
     ...(hasValidCoords
       ? { location: { type: "Point", coordinates: coords.map(Number) } }
       : {}),
   };
+}
+
+/**
+ * Convert a (possibly Mongoose) profile document to a plain object with
+ * string IDs and ISO date strings. Populated references (user, roomFlat)
+ * are converted to plain objects with string _id too.
+ *
+ * This is needed because Mongoose populate() returns plain objects by default
+ * but their _id fields stay as ObjectId instances, and date fields stay as
+ * Date objects — neither of which compare cleanly with === against strings
+ * in the frontend. The frontend typings assume string IDs and ISO date strings.
+ */
+function serializeProfile(doc) {
+  if (!doc) return doc;
+  const out = { ...doc };
+
+  // Main _id
+  out._id = String(out._id);
+
+  // Populated user reference
+  if (out.user && typeof out.user === "object") {
+    out.user = { ...out.user, _id: String(out.user._id) };
+  }
+
+  // Populated roomFlat reference
+  if (out.roomFlat && typeof out.roomFlat === "object") {
+    out.roomFlat = { ...out.roomFlat, _id: String(out.roomFlat._id) };
+  }
+
+  // Dates → ISO strings
+  if (out.createdAt && typeof out.createdAt === "object" && "toISOString" in out.createdAt) {
+    out.createdAt = out.createdAt.toISOString();
+  }
+  if (out.updatedAt && typeof out.updatedAt === "object" && "toISOString" in out.updatedAt) {
+    out.updatedAt = out.updatedAt.toISOString();
+  }
+
+  return out;
 }
 
 /**
@@ -93,7 +131,10 @@ export async function createProfile(req, res) {
       roommateProfile: profile._id,
     });
 
-    return res.status(201).json(profile);
+    // Serialize to plain object with string IDs and ISO date strings so the
+    // frontend can reliably work with the response (=== against string IDs,
+    // no Date objects leaking through).
+    return res.status(201).json(serializeProfile(profile));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -186,7 +227,7 @@ export async function updateProfile(req, res) {
       return res.status(404).json({ message: "Profile not found." });
     }
 
-    return res.json(profile);
+    return res.json(serializeProfile(profile));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -202,13 +243,14 @@ export async function getOwnProfile(req, res) {
       user: req.user._id,
     })
       .select("+documents")
+      .populate("user", "_id name avatarUrl")
       .populate("roomFlat");
 
     if (!profile) {
       return res.status(404).json({ message: "Profile not found." });
     }
 
-    return res.json(profile);
+    return res.json(serializeProfile(profile));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -221,14 +263,14 @@ export async function getOwnProfile(req, res) {
  */
 export async function getPublicProfile(req, res) {
   try {
-    const profile = await RoommateProfile.findById(req.params.id).populate(
-      "user",
-      "_id name avatarUrl"
-    );
+    const profile = await RoommateProfile.findById(req.params.id)
+      .populate("user", "_id name avatarUrl")
+      .populate("roomFlat");
+
     if (!profile || profile.status === "closed") {
       return res.status(404).json({ message: "Profile not found." });
     }
-    return res.json(profile);
+    return res.json(serializeProfile(profile));
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -385,9 +427,11 @@ export async function searchSeekers(req, res) {
 
     // Attach a match score against the requester's own profile, if they
     // have one — cheap since matchScoreAgainst is a pure in-memory method.
+    // Also serialize each profile so populated refs and dates become plain
+    // strings the frontend can work with.
     const myProfile = await RoommateProfile.findOne({ user: req.user._id });
     const withScores = seekers.map((s) => ({
-      profile: s,
+      profile: serializeProfile(s.toObject()),
       matchScore: myProfile ? myProfile.matchScoreAgainst(s) : null,
     }));
 
