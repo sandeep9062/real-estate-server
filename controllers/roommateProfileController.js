@@ -221,7 +221,10 @@ export async function getOwnProfile(req, res) {
  */
 export async function getPublicProfile(req, res) {
   try {
-    const profile = await RoommateProfile.findById(req.params.id);
+    const profile = await RoommateProfile.findById(req.params.id).populate(
+      "user",
+      "_id name avatarUrl"
+    );
     if (!profile || profile.status === "closed") {
       return res.status(404).json({ message: "Profile not found." });
     }
@@ -300,7 +303,9 @@ export async function searchSeekers(req, res) {
     if (foodPreference)
       query["lookingFor.foodPreference"] = { $in: [foodPreference, "any"] };
 
-    const seekers = await RoommateProfile.find(query).limit(50);
+    const seekers = await RoommateProfile.find(query)
+      .populate("user", "_id name avatarUrl")
+      .limit(50);
 
     // Attach a match score against the requester's own profile, if they
     // have one — cheap since matchScoreAgainst is a pure in-memory method.
