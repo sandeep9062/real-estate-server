@@ -46,7 +46,27 @@ export async function createProfile(req, res) {
       });
     }
 
-    const { type, searchArea, budgetRange, ...profileFields } = req.body;
+    // Both request shapes are accepted:
+    //  - JSON body (no new photo files)
+    //  - Multipart (new photos picked in the wizard): the JSON body arrives
+    //    stringified in `payload` while files land in req.files via the
+    //    multer-cloudinary middleware on the "photos" field (same pattern as
+    //    RoomFlat).
+    let body = req.body;
+    if (typeof body?.payload === "string") {
+      try {
+        body = JSON.parse(body.payload);
+      } catch {
+        // Malformed payload string — fall through with the raw body.
+      }
+    }
+
+    const uploadedPhotos = (req.files || []).map((file) => file.path);
+    const keptPhotos = Array.isArray(body.photos)
+      ? body.photos.filter((photo) => typeof photo === "string")
+      : [];
+
+    const { type, searchArea, budgetRange, ...profileFields } = body;
 
     if (!type) {
       return res.status(400).json({ message: "type is required." });
@@ -64,6 +84,7 @@ export async function createProfile(req, res) {
       type,
       searchArea: isSeeker ? normalizeSearchArea(searchArea) : undefined,
       budgetRange: isSeeker ? budgetRange : undefined,
+      photos: [...keptPhotos, ...uploadedPhotos],
       ...profileFields,
     });
 
@@ -85,7 +106,32 @@ export async function createProfile(req, res) {
  */
 export async function updateProfile(req, res) {
   try {
-    const { documents, user, searchArea, ...updatableFields } = req.body; // eslint-disable-line no-unused-vars
+    // Both request shapes are accepted — same dual pattern as RoomFlat:
+    //  - JSON body (edits without new photo files)
+    //  - Multipart: JSON body stringified in `payload`, new files in
+    //    req.files via the multer-cloudinary middleware on "photos".
+    let updatableFields = { ...req.body };
+    if (typeof req.body?.payload === "string") {
+      try {
+        updatableFields = JSON.parse(req.body.payload);
+      } catch {
+        // Malformed payload string — fall through with the raw body.
+      }
+    }
+    delete updatableFields.payload;
+
+    const { documents, user, searchArea, ...rest } = updatableFields; // eslint-disable-line no-unused-vars
+
+    // Newly uploaded photos (Cloudinary URLs from multer) are appended to any
+    // kept URLs sent in the body.
+    const uploadedPhotos = (req.files || []).map((file) => file.path);
+    const keptPhotos = Array.isArray(rest.photos)
+      ? rest.photos.filter((photo) => typeof photo === "string")
+      : [];
+    const photos =
+      uploadedPhotos.length || keptPhotos.length
+        ? [...keptPhotos, ...uploadedPhotos]
+        : undefined;
 
     const existing = await RoommateProfile.findOne({ user: req.user._id });
     if (!existing) {
@@ -97,7 +143,7 @@ export async function updateProfile(req, res) {
     // the merge predictable. Blanks mean "cleared" — drop them so enum
     // validators never see "".
     const savedHabits = existing.habits?.toObject?.() ?? existing.habits ?? {};
-    const incomingHabits = updatableFields.habits ?? {};
+    const incomingHabits = rest.habits ?? {};
     const mergedHabits = { ...savedHabits };
     for (const [key, value] of Object.entries(incomingHabits)) {
       if (value === "" || value === null) {
@@ -106,13 +152,13 @@ export async function updateProfile(req, res) {
         mergedHabits[key] = value;
       }
     }
-    if (updatableFields.habits) {
-      updatableFields.habits = mergedHabits;
+    if (rest.habits) {
+      rest.habits = mergedHabits;
     }
 
     const isComplete = Boolean(
-      (updatableFields.gender ?? existing.gender) &&
-        (updatableFields.occupation ?? existing.occupation) &&
+      (rest.gender ?? existing.gender) &&
+        (rest.occupation ?? existing.occupation) &&
         mergedHabits.smoking &&
         mergedHabits.drinking &&
         mergedHabits.foodPreference &&
@@ -120,7 +166,8 @@ export async function updateProfile(req, res) {
     );
 
     const update = {
-      ...updatableFields,
+      ...rest,
+      ...(photos !== undefined && { photos }),
       ...(searchArea !== undefined && {
         searchArea: normalizeSearchArea(searchArea),
       }),

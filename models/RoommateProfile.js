@@ -98,10 +98,15 @@ const roommateProfileSchema = new mongoose.Schema(
       max: { type: Number, min: 0 },
     },
     moveInDate: Date,
-    stayDurationMonths: Number, // relevant for temporary_seek
+    stayDurationMonths: Number, // e.g. short-term / temporary stays
 
     // ---- Bio / identity ----
     bio: { type: String, trim: true, maxlength: 500 },
+    // Public Cloudinary URLs of the user's profile pictures (the person, not
+    // the property — that lives on RoomFlat.photos). Kept intentionally
+    // distinct from `documents`, which holds PRIVATE verification files
+    // (select: false).
+    photos: [{ type: String, trim: true }],
     gender: {
       type: String,
       enum: ["male", "female", "other", "prefer_not_to_say"],

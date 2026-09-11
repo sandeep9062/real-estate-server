@@ -30,8 +30,8 @@ const router = express.Router();
 // ---- Profile ----
 // Creation/document-upload are resident-only (no agents/builders).
 // Reading/searching is open to any authenticated user.
-router.post("/profile", protect, restrictToResidents, createProfile);
-router.patch("/profile", protect, restrictToResidents, updateProfile);
+router.post("/profile", protect, restrictToResidents, upload.array("photos"), createProfile);
+router.patch("/profile", protect, restrictToResidents, upload.array("photos"), updateProfile);
 router.get("/profile/me", protect, getOwnProfile);
 router.get("/profile/:id", protect, getPublicProfile);
 router.post("/profile/documents", protect, restrictToResidents, uploadDocument);
