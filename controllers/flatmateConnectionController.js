@@ -89,7 +89,28 @@ export async function respondToConnectionRequest(req, res) {
     connection.status = status;
     await connection.save();
 
-    return res.json(connection);
+    // Serialize the response so populated references become plain objects with
+    // string IDs that the frontend can compare with === against string values.
+    const serialized = {
+      ...connection.toObject(),
+      _id: String(connection._id),
+      fromProfile:
+        typeof connection.fromProfile === "object" && connection.fromProfile !== null
+          ? { ...connection.fromProfile.toObject(), _id: String(connection.fromProfile._id) }
+          : connection.fromProfile,
+      toProfile:
+        typeof connection.toProfile === "object" && connection.toProfile !== null
+          ? { ...connection.toProfile.toObject(), _id: String(connection.toProfile._id) }
+          : connection.toProfile,
+      roomFlat:
+        typeof connection.roomFlat === "object" && connection.roomFlat !== null
+          ? { ...connection.roomFlat.toObject(), _id: String(connection.roomFlat._id) }
+          : connection.roomFlat,
+      createdAt: connection.createdAt?.toISOString() ?? connection.createdAt,
+      updatedAt: connection.updatedAt?.toISOString() ?? connection.updatedAt,
+    };
+
+    return res.json(serialized);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
@@ -110,9 +131,31 @@ export async function listMyConnections(req, res) {
       $or: [{ fromProfile: myProfile._id }, { toProfile: myProfile._id }],
     })
       .populate("fromProfile toProfile roomFlat")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
-    return res.json(connections);
+    // Explicitly serialize populated fields to plain objects with string IDs
+    // so the frontend can reliably compare IDs with === against string values.
+    const serialized = connections.map((c: Record<string, unknown>) => ({
+      ...c,
+      _id: String(c._id),
+      fromProfile:
+        typeof c.fromProfile === "object" && c.fromProfile !== null
+          ? { ...c.fromProfile, _id: String(c.fromProfile._id) }
+          : c.fromProfile,
+      toProfile:
+        typeof c.toProfile === "object" && c.toProfile !== null
+          ? { ...c.toProfile, _id: String(c.toProfile._id) }
+          : c.toProfile,
+      roomFlat:
+        typeof c.roomFlat === "object" && c.roomFlat !== null
+          ? { ...c.roomFlat, _id: String(c.roomFlat._id) }
+          : c.roomFlat,
+      createdAt: c.createdAt ? c.createdAt.toISOString() : c.createdAt,
+      updatedAt: c.updatedAt ? c.updatedAt.toISOString() : c.updatedAt,
+    }));
+
+    return res.json(serialized);
   } catch (err) {
     return res.status(500).json({ message: err.message });
   }
