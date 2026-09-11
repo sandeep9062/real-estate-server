@@ -79,8 +79,8 @@ const roommateProfileSchema = new mongoose.Schema(
       ref: "RoomFlat",
     },
 
-    // Only relevant when type is no_room — there's no property to attach a
-    // location to, so the search area lives here.
+    // Only relevant when intent is seeking_room / temporary_seek — there's
+    // no property to attach a location to, so the search area lives here.
     searchArea: {
       location: {
         type: { type: String, enum: ["Point"], default: "Point" },
@@ -93,25 +93,25 @@ const roommateProfileSchema = new mongoose.Schema(
       city: { type: String, trim: true, index: true },
       radiusKm: { type: Number, default: 5 },
     },
+
     budgetRange: {
       min: { type: Number, min: 0 },
       max: { type: Number, min: 0 },
     },
     moveInDate: Date,
-    stayDurationMonths: Number, // e.g. short-term / temporary stays
+
+    stayDurationMonths: Number,
 
     // ---- Bio / identity ----
     bio: { type: String, trim: true, maxlength: 500 },
-    // Public Cloudinary URLs of the user's profile pictures (the person, not
-    // the property — that lives on RoomFlat.photos). Kept intentionally
-    // distinct from `documents`, which holds PRIVATE verification files
-    // (select: false).
     photos: [{ type: String, trim: true }],
+
     gender: {
       type: String,
       enum: ["male", "female", "other", "prefer_not_to_say"],
     },
     dateOfBirth: Date,
+
     occupation: {
       type: String,
       enum: ["student", "working_professional", "self_employed", "other"],
@@ -221,7 +221,7 @@ const roommateProfileSchema = new mongoose.Schema(
 );
 
 roommateProfileSchema.index({ "searchArea.location": "2dsphere" });
-roommateProfileSchema.index({ type: 1, status: 1, "searchArea.city": 1 });
+roommateProfileSchema.index({ intent: 1, status: 1, "searchArea.city": 1 });
 
 roommateProfileSchema.pre("save", function () {
   if (this.isModified("documents")) {

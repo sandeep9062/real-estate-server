@@ -123,15 +123,17 @@ export async function updateProfile(req, res) {
     const { documents, user, searchArea, ...rest } = updatableFields; // eslint-disable-line no-unused-vars
 
     // Newly uploaded photos (Cloudinary URLs from multer) are appended to any
-    // kept URLs sent in the body.
+    // kept URLs sent in the body. `photos` in the body (even []) always wins
+    // so clearing every photo in edit mode is honored; leaving it out entirely
+    // keeps the saved list untouched.
     const uploadedPhotos = (req.files || []).map((file) => file.path);
     const keptPhotos = Array.isArray(rest.photos)
       ? rest.photos.filter((photo) => typeof photo === "string")
       : [];
-    const photos =
-      uploadedPhotos.length || keptPhotos.length
-        ? [...keptPhotos, ...uploadedPhotos]
-        : undefined;
+    const photosProvided = "photos" in rest || uploadedPhotos.length > 0;
+    const photos = photosProvided
+      ? [...keptPhotos, ...uploadedPhotos]
+      : undefined;
 
     const existing = await RoommateProfile.findOne({ user: req.user._id });
     if (!existing) {
