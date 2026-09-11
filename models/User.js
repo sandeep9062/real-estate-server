@@ -71,6 +71,7 @@ const userSchema = mongoose.Schema(
     },
     bookedVisits: [{ type: mongoose.Schema.Types.ObjectId, ref: "Booking" }],
     favProperties: [{ type: mongoose.Schema.Types.ObjectId, ref: "Property" }],
+    favRoommateProfiles: [{ type: mongoose.Schema.Types.ObjectId, ref: "RoommateProfile" }],
     recentlyViewedProperties: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
     ],

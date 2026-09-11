@@ -25,6 +25,8 @@ import {
   listMyConnections,
 } from "../controllers/flatmateConnectionController.js";
 
+import { toggleFavRoommate } from "../controllers/userController.js";
+
 const router = express.Router();
 
 // ---- Profile ----
@@ -61,5 +63,8 @@ router.get("/swap-matches", protect, searchSwapMatches);
 router.post("/connections", protect, sendConnectionRequest);
 router.patch("/connections/:id", protect, respondToConnectionRequest);
 router.get("/connections", protect, listMyConnections);
+
+// ---- Favourite Roommate Profiles ----
+router.post("/favourite/:profileId", protect, toggleFavRoommate);
 
 export default router;

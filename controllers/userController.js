@@ -472,58 +472,36 @@ export const getRecentlyViewed = async (req, res) => {
   }
 };
 
-export const cancelVisit = async (req, res) => {
+export const toggleFavRoommate = async (req, res) => {
+  const { profileId } = req.params;
+  const user = await User.findById(req.user._id);
+
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+
   try {
-    const { propertyId } = req.params;
-    const userId = req.user._id;
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const booking = await Booking.findOne({
-      user: userId,
-      property: propertyId,
-    }).populate({ path: "property", select: "title user" });
-
-    if (!booking) {
-      return res.status(404).json({ message: "Booking not found" });
-    }
-
-    const visitDateStr = new Date(booking.date).toLocaleDateString();
-    const propertyTitle = booking.property?.title || "Property";
-    const ownerUserId = booking.property?.user?.toString?.();
-
-    // Remove the booking reference from user's bookedVisits
-    await User.findByIdAndUpdate(userId, {
-      $pull: { bookedVisits: booking._id },
-    });
-
-    await booking.deleteOne();
-
-    notifyVisitCancelledEmails({
-      visitorEmail: user.email,
-      visitorName: user.name,
-      visitorUserId: userId.toString(),
-      ownerUserId,
-      propertyTitle,
-      visitDateStr,
-    }).catch((err) =>
-      console.warn("Visit cancellation emails skipped:", err.message),
+    const alreadyFavourited = user.favRoommateProfiles.some(
+      (id) => id.toString() === profileId,
     );
 
-    // Return the populated user
-    const populatedUser = await User.findById(userId)
-      .populate({
-        path: "bookedVisits",
-        populate: { path: "property" },
-      })
-      .select("-password");
+    if (alreadyFavourited) {
+      user.favRoommateProfiles = user.favRoommateProfiles.filter(
+        (id) => id.toString() !== profileId,
+      );
+    } else {
+      user.favRoommateProfiles.push(profileId);
+    }
 
-    return res.status(200).json(populatedUser);
-  } catch (error) {
-    console.error("Cancel booking error:", error);
-    return res.status(500).json({ message: "Server Error" });
+    await user.save();
+    const populatedUser = await User.findById(req.user._id).populate(
+      "favRoommateProfiles",
+    );
+    res.status(200).json(populatedUser);
+  } catch (err) {
+    console.error("toggleFavRoommate error:", err);
+    res.status(500).json({ message: "Server Error" });
   }
 };
+
+export const cancelVisit = async (req, res) => {
