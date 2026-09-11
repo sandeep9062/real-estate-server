@@ -68,6 +68,13 @@ const roommateProfileSchema = new mongoose.Schema(
       index: true,
     },
 
+    type: {
+      type: String,
+      enum: ["have_room", "no_room"],
+      required: true,
+      index: true,
+    },
+
     intent: {
       type: String,
       enum: [
@@ -205,6 +212,11 @@ const roommateProfileSchema = new mongoose.Schema(
     isComplete: {
       type: Boolean,
       default: false,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
     },
     status: {
       type: String,
