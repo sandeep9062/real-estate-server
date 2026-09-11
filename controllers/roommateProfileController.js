@@ -278,8 +278,10 @@ export async function uploadDocument(req, res) {
 
 /**
  * GET /api/roommates/seekers?city=&smoking=&drinking=&foodPreference=
- * For a `has_room` poster browsing seekers near them, filtered by lifestyle
- * tags. Never returns documents (default select: false covers this).
+ * Returns all active roommate profiles (both have_room and no_room).
+ * Populates user (for name/avatar) and roomFlat (for have_room profiles'
+ * location and rent). Filtering by lifestyle tags only applies to no_room
+ * profiles. Never returns documents (default select: false covers this).
  */
 export async function searchSeekers(req, res) {
   try {
@@ -287,7 +289,6 @@ export async function searchSeekers(req, res) {
       req.query;
 
     const query = {
-      type: "no_room",
       status: "active",
     };
 
@@ -305,6 +306,7 @@ export async function searchSeekers(req, res) {
 
     const seekers = await RoommateProfile.find(query)
       .populate("user", "_id name avatarUrl")
+      .populate("roomFlat")
       .limit(50);
 
     // Attach a match score against the requester's own profile, if they
