@@ -339,10 +339,10 @@ export async function searchSeekers(req, res) {
       const min = minBudget ? Number(minBudget) : undefined;
       const max = maxBudget ? Number(maxBudget) : undefined;
 
-      const budgetOr: Record<string, unknown>[] = [];
+      const budgetOr = [];
 
       // For no_room profiles: budgetRange.max must be within range
-      const noRoomAnd: Record<string, unknown>[] = [];
+      const noRoomAnd = [];
       if (min !== undefined) noRoomAnd.push({ "budgetRange.max": { $gte: min } });
       if (max !== undefined) noRoomAnd.push({ "budgetRange.max": { $lte: max } });
       if (noRoomAnd.length > 0) {
@@ -354,7 +354,7 @@ export async function searchSeekers(req, res) {
       }
 
       // For have_room profiles: roomFlat.rentAmount must be within range
-      const haveRoomAnd: Record<string, unknown>[] = [];
+      const haveRoomAnd = [];
       if (min !== undefined)
         haveRoomAnd.push({ "roomFlat.rentAmount": { $gte: min } });
       if (max !== undefined)
