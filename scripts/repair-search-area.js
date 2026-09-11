@@ -8,7 +8,7 @@
  *
  * Fix: rewrite `searchArea.location` to a valid GeoJSON Point. When the doc has
  * no usable coordinates we fall back to [0, 0] (the schema default). If the
- * searchArea itself is missing/null but the intent needs one, we leave it
+ * searchArea itself is missing/null but the profile type needs one, we leave it
  * alone — only the broken Point is repaired.
  *
  * Usage:

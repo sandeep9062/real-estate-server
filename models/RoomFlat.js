@@ -4,17 +4,11 @@ import mongoose from "mongoose";
  * RoomFlat
  *
  * The physical-property record for the flatmate feature. Only created
- * when the associated RoommateProfile's intent is "has_room", "swap", or
- * "temporary_offer" — profiles that are just searching (seeking_room,
- * temporary_seek) never get one of these.
+ * when the associated RoommateProfile's type is "have_room" — profiles
+ * that are just searching (type "no_room") never get one of these.
  *
- * `intent` is denormalized from the parent RoommateProfile at creation
- * time. This is deliberate duplication: RoomFlat is the collection you run
- * geo queries against for public browse/search, and Mongo can't combine
- * $geoWithin/$near with a filter on a populated field in a single query.
- * Keeping intent here means the browse-by-location query never needs to
- * populate roommateProfile just to know what kind of listing it's looking
- * at.
+ * RoomFlat is the collection you run geo queries against for public
+ * browse/search.
  */
 
 // Reuse the exact location shape used on Property.js so geo-query patterns
@@ -54,24 +48,10 @@ const roomFlatSchema = new mongoose.Schema(
       required: true,
       index: true,
     },
-    // Denormalized for quick filtering in browse/search queries without a
-    intent: {
-      type: String,
-      enum: [
-        "has_room",
-        "seeking_room",
-        "swap",
-        "temporary_offer",
-        "temporary_seek",
-        "subletting_out",
-      ],
-      required: true,
-      index: true,
-    },
 
-    openToSwap: {
+    openToTemporaryStay: {
       type: Boolean,
-      default: false, // only meaningful when intent === "has_room" — "I'd also consider swapping"
+      default: false,
     },
 
     title: { type: String, required: true, trim: true },
@@ -81,17 +61,22 @@ const roomFlatSchema = new mongoose.Schema(
 
     rentAmount: { type: Number, min: 0, required: true },
     securityDeposit: { type: Number, min: 0 },
+
     roomType: {
       type: String,
       enum: ["private_room", "shared_room", "entire_flat"],
       required: true,
     },
+
     furnishing: {
       type: String,
       enum: ["furnished", "semi_furnished", "unfurnished"],
     },
+
     availableFrom: Date,
+
     minStayMonths: { type: Number, min: 0 },
+
     photos: [{ type: String }],
 
     // Disclosures about the shared-living situation — always relevant here
@@ -119,7 +104,10 @@ const roomFlatSchema = new mongoose.Schema(
       default: false,
     },
 
-    // Only meaningful when intent === "swap"
+    openToSwap: {
+      type: Boolean,
+      default: false,
+    },
     swapDetails: {
       desiredLocality: { type: String, trim: true },
       desiredCity: { type: String, trim: true },
@@ -129,7 +117,6 @@ const roomFlatSchema = new mongoose.Schema(
       },
     },
 
-    // Only meaningful when intent === "temporary_offer"
     temporaryDetails: {
       startDate: Date,
       endDate: Date,
@@ -141,9 +128,15 @@ const roomFlatSchema = new mongoose.Schema(
       default: "active",
       index: true,
     },
+
     interestCount: {
       type: Number,
       default: 0,
+    },
+
+    isActive: {
+      type: Boolean,
+      default: true,
     },
   },
   {
@@ -151,7 +144,7 @@ const roomFlatSchema = new mongoose.Schema(
   },
 );
 
-roomFlatSchema.index({ intent: 1, status: 1, "location.city": 1 });
+roomFlatSchema.index({ status: 1, "location.city": 1 });
 
 // Post-match reputation, filled in after a connection has actually played
 // out — never self-reported by the owner. See ownerReviewSchema below.

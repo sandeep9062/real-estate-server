@@ -4,12 +4,10 @@ import mongoose from "mongoose";
  * RoommateProfile
  *
  * One profile per user participating in the flatmate feature — the
- * universal record. Everyone using the feature has exactly one of these,
- * regardless of intent.
+ * universal record. Everyone using the feature has exactly one of these.
  *
- * A profile with intent "has_room" / "swap" / "temporary_offer" links to a
- * RoomFlat document (the actual property). A profile with intent
- * "seeking_room" / "temporary_seek" has no property — it searches by
+ * A profile with type "have_room" links to a RoomFlat document (the actual
+ * property). A profile with type "no_room" has no property — it searches by
  * `searchArea` + `budgetRange` directly on this document instead.
  *
  * Kept as its own collection (not embedded on User) because:
@@ -75,27 +73,14 @@ const roommateProfileSchema = new mongoose.Schema(
       index: true,
     },
 
-    intent: {
-      type: String,
-      enum: [
-        "has_room",
-        "seeking_room",
-        "swap",
-        "temporary_offer",
-        "temporary_seek",
-      ],
-      required: true,
-      index: true,
-    },
-
-    // Only set when intent is has_room / swap / temporary_offer
+    // Only set when type is have_room
     roomFlat: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "RoomFlat",
     },
 
-    // Only relevant when intent is seeking_room / temporary_seek — there's
-    // no property to attach a location to, so the search area lives here.
+    // Only relevant when type is no_room — there's no property to attach a
+    // location to, so the search area lives here.
     searchArea: {
       location: {
         type: { type: String, enum: ["Point"], default: "Point" },
@@ -231,7 +216,7 @@ const roommateProfileSchema = new mongoose.Schema(
 );
 
 roommateProfileSchema.index({ "searchArea.location": "2dsphere" });
-roommateProfileSchema.index({ intent: 1, status: 1, "searchArea.city": 1 });
+roommateProfileSchema.index({ type: 1, status: 1, "searchArea.city": 1 });
 
 roommateProfileSchema.pre("save", function () {
   if (this.isModified("documents")) {

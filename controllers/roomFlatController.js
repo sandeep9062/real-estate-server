@@ -2,12 +2,10 @@ import RoomFlat from "../models/RoomFlat.js";
 import RoommateProfile from "../models/RoommateProfile.js";
 import Property from "../models/Property.js";
 
-const PROPERTY_INTENTS = ["has_room", "swap", "temporary_offer"];
-
 /**
  * POST /api/roommates/room-flat
  * Creates the RoomFlat tied to the caller's RoommateProfile. Only valid
- * when the profile's intent actually implies a property exists.
+ * when the profile's type is "have_room".
  */
 export async function createRoomFlat(req, res) {
   try {
@@ -17,9 +15,9 @@ export async function createRoomFlat(req, res) {
         message: "Create a roommate profile before listing a room/flat.",
       });
     }
-    if (!PROPERTY_INTENTS.includes(profile.intent)) {
+    if (profile.type !== "have_room") {
       return res.status(400).json({
-        message: `intent "${profile.intent}" does not list a property. Only has_room, swap, and temporary_offer do.`,
+        message: `type "${profile.type}" does not list a property. Only "have_room" does.`,
       });
     }
     if (profile.roomFlat) {
@@ -59,7 +57,6 @@ export async function createRoomFlat(req, res) {
       photos: [...keptPhotos, ...uploadedPhotos],
       roommateProfile: profile._id,
       owner: req.user._id,
-      intent: profile.intent, // denormalized — always taken from the profile, never trusted from the body
     });
 
     profile.roomFlat = roomFlat._id;
@@ -73,9 +70,7 @@ export async function createRoomFlat(req, res) {
 
 /**
  * PATCH /api/roommates/room-flat/:id
- * Owner-only update. intent is never editable here — it's fixed at
- * creation from the parent profile; changing it would require closing this
- * listing and creating a new one under a new intent.
+ * Owner-only update.
  */
 export async function updateRoomFlat(req, res) {
   try {
@@ -90,7 +85,7 @@ export async function updateRoomFlat(req, res) {
       }
     }
     delete updatableFields.payload;
-    const { intent, owner, roommateProfile, ...fields } = updatableFields; // eslint-disable-line no-unused-vars
+    const { owner, roommateProfile, ...fields } = updatableFields; // eslint-disable-line no-unused-vars
 
     // Newly uploaded photos (Cloudinary URLs from multer) are appended to any
     // kept URLs sent in the body.
@@ -122,20 +117,16 @@ export async function updateRoomFlat(req, res) {
  * GET /api/roommates/browse?city=&minRent=&maxRent=&roomType=
  *
  * Public browse for seekers. Merges two sources, as discussed:
- *  1. RoomFlat listings with intent has_room / temporary_offer — these
- *     come with a real RoommateProfile behind them (habits, match score).
+ *  1. RoomFlat listings — these come with a real RoommateProfile behind
+ *     them (habits, match score).
  *  2. Plain Property rent listings with allowsSubletting: true — an owner
  *     open to sharing but with no dedicated roommate profile/matching data.
- * Swap listings are deliberately excluded — they have their own endpoint
- * (searchSwapMatches below), since swap needs reciprocal-fit logic, not a
- * plain browse.
  */
 export async function browseRoomsAndFlats(req, res) {
   try {
     const { city, minRent, maxRent, roomType } = req.query;
 
     const roomFlatQuery = {
-      intent: { $in: ["has_room", "temporary_offer"] },
       status: "active",
     };
     if (city) roomFlatQuery["location.city"] = city;
@@ -188,16 +179,21 @@ export async function browseRoomsAndFlats(req, res) {
 export async function searchSwapMatches(req, res) {
   try {
     const myProfile = await RoommateProfile.findOne({ user: req.user._id });
-    if (!myProfile || myProfile.intent !== "swap" || !myProfile.roomFlat) {
+    if (!myProfile || myProfile.type !== "have_room" || !myProfile.roomFlat) {
       return res.status(400).json({
-        message: "You need an active swap listing to search for swap matches.",
+        message: "You need an active room listing to search for swap matches.",
       });
     }
 
     const myRoomFlat = await RoomFlat.findById(myProfile.roomFlat);
+    if (!myRoomFlat.openToSwap) {
+      return res.status(400).json({
+        message: "Enable openToSwap on your listing to search for swap matches.",
+      });
+    }
 
     const candidates = await RoomFlat.find({
-      intent: "swap",
+      openToSwap: true,
       status: "active",
       _id: { $ne: myRoomFlat._id },
       "location.city": myRoomFlat.swapDetails?.desiredCity,

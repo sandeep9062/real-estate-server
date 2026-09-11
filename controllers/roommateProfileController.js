@@ -46,24 +46,24 @@ export async function createProfile(req, res) {
       });
     }
 
-    const { intent, searchArea, budgetRange, ...profileFields } = req.body;
+    const { type, searchArea, budgetRange, ...profileFields } = req.body;
 
-    if (!intent) {
-      return res.status(400).json({ message: "intent is required." });
+    if (!type) {
+      return res.status(400).json({ message: "type is required." });
     }
 
-    const needsSearchArea = ["seeking_room", "temporary_seek"].includes(intent);
-    if (needsSearchArea && !searchArea?.city) {
+    const isSeeker = type === "no_room";
+    if (isSeeker && !searchArea?.city) {
       return res.status(400).json({
-        message: "searchArea.city is required for seeker intents.",
+        message: "searchArea.city is required for seeker profiles.",
       });
     }
 
     const profile = await RoommateProfile.create({
       user: req.user._id,
-      intent,
-      searchArea: needsSearchArea ? normalizeSearchArea(searchArea) : undefined,
-      budgetRange: needsSearchArea ? budgetRange : undefined,
+      type,
+      searchArea: isSeeker ? normalizeSearchArea(searchArea) : undefined,
+      budgetRange: isSeeker ? budgetRange : undefined,
       ...profileFields,
     });
 
@@ -235,7 +235,7 @@ export async function searchSeekers(req, res) {
       req.query;
 
     const query = {
-      intent: { $in: ["seeking_room", "temporary_seek"] },
+      type: "no_room",
       status: "active",
     };
 
