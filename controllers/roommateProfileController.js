@@ -277,32 +277,106 @@ export async function uploadDocument(req, res) {
 }
 
 /**
- * GET /api/roommates/seekers?city=&smoking=&drinking=&foodPreference=
+ * GET /api/roommates/seekers
  * Returns all active roommate profiles (both have_room and no_room).
  * Populates user (for name/avatar) and roomFlat (for have_room profiles'
- * location and rent). Filtering by lifestyle tags only applies to no_room
- * profiles. Never returns documents (default select: false covers this).
+ * location and rent).
+ *
+ * Query params:
+ *   city              – filter by searchArea.city (no_room) or roomFlat.location.city (have_room)
+ *   type              – "have_room" | "no_room"
+ *   gender            – "male" | "female" | "other" | "prefer_not_to_say"
+ *   occupation        – "student" | "working_professional" | "self_employed" | "other"
+ *   smoking           – "yes" | "no" (matches habits.smoking)
+ *   drinking          – "yes" | "no" (matches habits.drinking)
+ *   foodPreference    – "veg" | "non_veg" | "eggetarian" | "vegan" (matches habits.foodPreference)
+ *   cleanliness       – "very_tidy" | "moderately_tidy" | "relaxed" (matches habits.cleanlinessLevel)
+ *   idVerified        – "true" to show only verified profiles
+ *   minBudget         – minimum budget (matches budgetRange.min for no_room, roomFlat.rentAmount for have_room)
+ *   maxBudget         – maximum budget
+ * Never returns documents (default select: false covers this).
  */
 export async function searchSeekers(req, res) {
   try {
-    const { city, smoking, drinking, nightlifeFriendly, foodPreference } =
-      req.query;
+    const {
+      city,
+      type,
+      gender,
+      occupation,
+      smoking,
+      drinking,
+      foodPreference,
+      cleanliness,
+      idVerified,
+      minBudget,
+      maxBudget,
+    } = req.query;
 
     const query = {
       status: "active",
     };
 
-    if (city) query["searchArea.city"] = city;
-    if (smoking)
-      query["lookingFor.smoking"] = { $in: [smoking, "no_preference"] };
-    if (drinking)
-      query["lookingFor.drinking"] = { $in: [drinking, "no_preference"] };
-    if (nightlifeFriendly)
-      query["lookingFor.nightlifeFriendly"] = {
-        $in: [nightlifeFriendly, "no_preference"],
-      };
-    if (foodPreference)
-      query["lookingFor.foodPreference"] = { $in: [foodPreference, "any"] };
+    if (type) query.type = type;
+    if (gender) query.gender = gender;
+    if (occupation) query.occupation = occupation;
+    if (smoking) query["habits.smoking"] = smoking;
+    if (drinking) query["habits.drinking"] = drinking;
+    if (foodPreference) query["habits.foodPreference"] = foodPreference;
+    if (cleanliness) query["habits.cleanlinessLevel"] = cleanliness;
+    if (idVerified === "true") query.idVerified = true;
+
+    // City filter: match either searchArea.city (no_room) or roomFlat.location.city (have_room)
+    if (city) {
+      query.$or = [
+        { "searchArea.city": city },
+        { "roomFlat.location.city": city },
+      ];
+    }
+
+    // Budget filter: match budgetRange.max (no_room) or roomFlat.rentAmount (have_room)
+    // Each field type needs min+max combined with $and, then $or between field types
+    if (minBudget || maxBudget) {
+      const min = minBudget ? Number(minBudget) : undefined;
+      const max = maxBudget ? Number(maxBudget) : undefined;
+
+      const budgetOr: Record<string, unknown>[] = [];
+
+      // For no_room profiles: budgetRange.max must be within range
+      const noRoomAnd: Record<string, unknown>[] = [];
+      if (min !== undefined) noRoomAnd.push({ "budgetRange.max": { $gte: min } });
+      if (max !== undefined) noRoomAnd.push({ "budgetRange.max": { $lte: max } });
+      if (noRoomAnd.length > 0) {
+        budgetOr.push(
+          noRoomAnd.length === 1
+            ? { type: "no_room", ...noRoomAnd[0] }
+            : { type: "no_room", $and: noRoomAnd },
+        );
+      }
+
+      // For have_room profiles: roomFlat.rentAmount must be within range
+      const haveRoomAnd: Record<string, unknown>[] = [];
+      if (min !== undefined)
+        haveRoomAnd.push({ "roomFlat.rentAmount": { $gte: min } });
+      if (max !== undefined)
+        haveRoomAnd.push({ "roomFlat.rentAmount": { $lte: max } });
+      if (haveRoomAnd.length > 0) {
+        budgetOr.push(
+          haveRoomAnd.length === 1
+            ? { type: "have_room", ...haveRoomAnd[0] }
+            : { type: "have_room", $and: haveRoomAnd },
+        );
+      }
+
+      if (budgetOr.length > 0) {
+        // Combine with existing $or (city) using $and if needed
+        if (query.$or) {
+          query.$and = [{ $or: query.$or }, { $or: budgetOr }];
+          delete query.$or;
+        } else {
+          query.$or = budgetOr;
+        }
+      }
+    }
 
     const seekers = await RoommateProfile.find(query)
       .populate("user", "_id name avatarUrl")
