@@ -218,6 +218,25 @@ const getJournalBySlug = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Track a view when the public journal detail page is opened
+// @route   POST /api/journals/:slug/view
+// @access  Public
+const trackJournalView = asyncHandler(async (req, res) => {
+  // Atomic increment so concurrent page opens never lose a count.
+  const journal = await Journal.findOneAndUpdate(
+    { slug: req.params.slug, isActive: true },
+    { $inc: { views: 1 } },
+    { new: true, select: "views" },
+  );
+
+  if (journal) {
+    res.json({ success: true, views: journal.views });
+  } else {
+    res.status(404);
+    throw new Error("Journal post not found");
+  }
+});
+
 // @desc    Get all journal slugs for sitemap (only active journals)
 // @route   GET /api/journals/sitemap-data
 // @access  Public
@@ -274,4 +293,5 @@ export {
   updateJournal,
   deleteJournal,
   getJournalsForSitemap,
+  trackJournalView,
 };

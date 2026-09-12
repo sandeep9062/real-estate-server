@@ -9,6 +9,7 @@ import {
   updateJournal,
   deleteJournal,
   getJournalsForSitemap,
+  trackJournalView,
 } from "../controllers/journalController.js";
 
 import upload from "../middlewares/multer.js";
@@ -35,5 +36,8 @@ router
   .delete(protect, checkAdmin, deleteJournal);
 
 router.route("/slug/:slug").get(getJournalBySlug);
+
+// Public: count a view when the journal detail page is opened
+router.route("/:slug/view").post(trackJournalView);
 
 export default router;
