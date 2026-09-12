@@ -319,6 +319,14 @@ export async function uploadDocument(req, res) {
 }
 
 /**
+ * Escapes regex metacharacters so a user-supplied city name can be matched
+ * case-insensitively without breaking the pattern or injecting lookarounds.
+ */
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * GET /api/roommates/seekers
  * Returns all active roommate profiles (both have_room and no_room).
  * Populates user (for name/avatar) and roomFlat (for have_room profiles'
@@ -367,11 +375,17 @@ export async function searchSeekers(req, res) {
     if (cleanliness) query["habits.cleanlinessLevel"] = cleanliness;
     if (idVerified === "true") query.idVerified = true;
 
-    // City filter: match either searchArea.city (no_room) or roomFlat.location.city (have_room)
+    // City filter: match either searchArea.city (no_room) or
+    // roomFlat.location.city (have_room). Case-insensitive so "Chandigarh"
+    // from the city chips also matches stored "chandigarh".
     if (city) {
+      const cityRegex = {
+        $regex: `^${escapeRegex(city)}$`,
+        $options: "i",
+      };
       query.$or = [
-        { "searchArea.city": city },
-        { "roomFlat.location.city": city },
+        { "searchArea.city": cityRegex },
+        { "roomFlat.location.city": cityRegex },
       ];
     }
 
