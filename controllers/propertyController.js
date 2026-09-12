@@ -314,10 +314,7 @@ const createProperty = asyncHandler(async (req, res) => {
 const getProperties = asyncHandler(async (req, res) => {
   let query = buildPropertyFindQuery(req.query);
 
-  // ── Force strict Number casting for numeric fields ──
-  if (req.query.bedrooms && query["facilities.bedrooms"] !== undefined) {
-    query["facilities.bedrooms"] = Number(req.query.bedrooms);
-  }
+  // ── maxPrice / minPrice params (from natural-language search) ──
   if (req.query.maxPrice || req.query.priceMax) {
     const maxVal = req.query.maxPrice || req.query.priceMax;
     query.price = { ...(query.price || {}), $lte: Number(maxVal) };
@@ -348,132 +345,20 @@ const getProperties = asyncHandler(async (req, res) => {
   // ── Debug logging ──
   console.log("DEBUGGER - FINAL MONGO QUERY:", JSON.stringify(query, null, 2));
 
-  // ── Attempt primary precise query ──
-  let total = await Property.countDocuments(query);
-  let properties;
-
-  if (total === 0) {
-    // ── Graceful fallback: if precise query yields 0 results, build a softer query ──
-    console.log(
-      "DEBUGGER - PRIMARY QUERY RETURNED 0 RESULTS. FALLING BACK TO SOFTER QUERY.",
-    );
-    const fallbackQuery = { isActive: true, deletedAt: null };
-
-    // Preserve ALL applied filters in the fallback (not just a subset)
-    const preservedFields = [
-      "deal",
-      "type",
-      "propertyCategory",
-      "availability",
-      "furnishing",
-      "postedBy",
-      "facing",
-      "tenantPreference",
-      "ownershipType",
-      "listingAvailability",
-      "isVerified",
-      "builderName",
-      "projectName",
-      "projectId",
-      "isFeatured",
-      "landmark",
-    ];
-    for (const field of preservedFields) {
-      if (query[field] !== undefined) {
-        fallbackQuery[field] = query[field];
-      }
-    }
-
-    // Always keep city if present — it's the most important filter
-    if (query["location.city"]) {
-      fallbackQuery["location.city"] = query["location.city"];
-    }
-    // Keep sector if present
-    if (query["location.sector"]) {
-      fallbackQuery["location.sector"] = query["location.sector"];
-    }
-    // Keep price range if present
-    if (query.price) {
-      fallbackQuery.price = query.price;
-    }
-    // Keep area range if present
-    if (query["area.value"]) {
-      fallbackQuery["area.value"] = query["area.value"];
-    }
-    // Keep floor range if present
-    if (query.floor) {
-      fallbackQuery.floor = query.floor;
-    }
-    // Build a loose text $or across all text fields as a backup
-    const textClauses = [];
-    const rawSearch = req.query.search || "";
-    if (rawSearch) {
-      const terms = rawSearch.trim().split(/\s+/).filter(Boolean);
-      terms.forEach((term) => {
-        const regex = { $regex: term, $options: "i" };
-        textClauses.push(
-          { title: regex },
-          { description: regex },
-          { "location.address": regex },
-          { "location.city": regex },
-          { "location.sector": regex },
-          { "location.landmark": regex },
-        );
-      });
-    }
-    // If landmark was provided, add those terms too
-    const rawLandmark = req.query.landmark || "";
-    if (rawLandmark) {
-      const terms = rawLandmark.trim().split(/\s+/).filter(Boolean);
-      terms.forEach((term) => {
-        const regex = { $regex: term, $options: "i" };
-        textClauses.push(
-          { title: regex },
-          { description: regex },
-          { "location.address": regex },
-          { "location.landmark": regex },
-          { "location.sector": regex },
-        );
-      });
-    }
-    // Preserve all facilities filters (bedrooms, bathrooms, balconies, parkings, totalFloors)
-    const facilityFields = [
-      "facilities.bedrooms",
-      "facilities.bathrooms",
-      "facilities.balconies",
-      "facilities.parkings",
-      "facilities.totalFloors",
-    ];
-    for (const field of facilityFields) {
-      if (query[field] !== undefined) {
-        fallbackQuery[field] = query[field];
-      }
-    }
-    // Only add $or if we have text terms
-    if (textClauses.length > 0) {
-      fallbackQuery.$or = textClauses;
-    }
-
-    console.log(
-      "DEBUGGER - FALLBACK MONGO QUERY:",
-      JSON.stringify(fallbackQuery, null, 2),
-    );
-
-    total = await Property.countDocuments(fallbackQuery);
-    properties = await Property.find(fallbackQuery)
-      .populate("user", "name email phone role")
-      .sort({ isFeatured: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-  } else {
-    properties = await Property.find(query)
-      .populate("user", "name email phone role")
-      .sort({ isFeatured: -1, createdAt: -1 })
-      .skip(skip)
-      .limit(limit)
-      .lean();
-  }
+  // ── Run the query ──
+  // NOTE: There used to be a "graceful fallback" here that rebuilt a looser
+  // query when the exact one returned 0 results. That behaviour was harmful —
+  // it dropped/softened the user's filters (e.g. a bedrooms=9 search with no
+  // matches would suddenly return ALL rent listings) and turned multi-token
+  // text searches into single-token ORs that matched huge swathes of
+  // irrelevant properties. Filters now stay strict; 0 results means 0 results.
+  const total = await Property.countDocuments(query);
+  const properties = await Property.find(query)
+    .populate("user", "name email phone role")
+    .sort({ isFeatured: -1, createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
+    .lean();
 
   const data = properties.map((property) =>
     transformPropertyCoordinates(property),

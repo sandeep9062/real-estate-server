@@ -49,15 +49,27 @@ export function buildPropertyFindQuery(reqQuery) {
   }
 
   if (search) {
-    query.$or = [
-      { "location.state": { $regex: search, $options: "i" } },
-      { "location.address": { $regex: search, $options: "i" } },
-      { "location.city": { $regex: search, $options: "i" } },
-      { "location.sector": { $regex: search, $options: "i" } },
-      { "location.country": { $regex: search, $options: "i" } },
-      { description: { $regex: search, $options: "i" } },
-      { title: { $regex: search, $options: "i" } },
-    ];
+    // Multi-token search: match ALL tokens across any single text field.
+    // A single regex with per-token lookaheads gives "AND across words,
+    // OR across fields" without returning garbage for short tokens.
+    const tokens = String(search)
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((t) => escapeRegex(t));
+    if (tokens.length > 0) {
+      const joinedRegex = tokens.map((t) => `(?=.*${t})`).join("");
+      query.$or = [
+        { "location.state": { $regex: joinedRegex, $options: "i" } },
+        { "location.address": { $regex: joinedRegex, $options: "i" } },
+        { "location.city": { $regex: joinedRegex, $options: "i" } },
+        { "location.sector": { $regex: joinedRegex, $options: "i" } },
+        { "location.country": { $regex: joinedRegex, $options: "i" } },
+        { "location.landmark": { $regex: joinedRegex, $options: "i" } },
+        { description: { $regex: joinedRegex, $options: "i" } },
+        { title: { $regex: joinedRegex, $options: "i" } },
+      ];
+    }
   }
 
   /* ── City: case-insensitive anchored regex with whitespace trimming ── */
@@ -70,13 +82,23 @@ export function buildPropertyFindQuery(reqQuery) {
   }
 
   if (sector) {
-    query["location.sector"] = { $regex: sector, $options: "i" };
+    query["location.sector"] = {
+      $regex: escapeRegex(sector),
+      $options: "i",
+    };
   }
 
   if (availability) query.availability = availability;
   if (deal) query.deal = deal;
   if (type) query.type = type;
-  if (furnishing) query.furnishing = furnishing;
+  // "Furnished" should also include legacy "Fully Furnished" listings so the
+  // filter doesn't silently hide fully-furnished homes.
+  if (furnishing) {
+    query.furnishing =
+      furnishing === "Furnished"
+        ? { $in: ["Furnished", "Fully Furnished"] }
+        : furnishing;
+  }
   if (postedBy) query.postedBy = postedBy;
   if (propertyCategory) query.propertyCategory = propertyCategory;
 
