@@ -53,7 +53,7 @@ router
   .put(protect, propertyUpload, updateProperty)
   .delete(protect, deleteProperty);
 
-router.get("/:id/download-brochure", getPropertyBrochure);
+router.get("/:id/download-brochure", protect, getPropertyBrochure);
 router.post("/:id/whatsapp-lead", protect, createWhatsAppLead);
 
 export default router;

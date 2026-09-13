@@ -93,7 +93,7 @@ function coerceBool(v) {
 /**
  * @desc    Generate and stream property brochure PDF
  * @route   GET /api/properties/:id/download-brochure
- * @access  Public
+ * @access  Private (logged-in users only)
  */
 export const getPropertyBrochure = asyncHandler(async (req, res) => {
   const { id } = req.params;
