@@ -18,7 +18,7 @@ const enquirySchema = new mongoose.Schema(
     phone: {
       type: String,
       required: true,
-     // unique: true,
+      // unique: true,
       trim: true,
     },
     location: {
@@ -210,12 +210,20 @@ const enquirySchema = new mongoose.Schema(
       type: Boolean,
       required: true,
     },
+
+    status: {
+      type: String,
+      enum: ["New", "In Progress", "Closed"],
+      default: "New",
+      index: true,
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-const Enquiry = mongoose.models.Enquiry || mongoose.model("Enquiry", enquirySchema);
+const Enquiry =
+  mongoose.models.Enquiry || mongoose.model("Enquiry", enquirySchema);
 
 export default Enquiry;
