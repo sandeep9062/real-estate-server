@@ -16,6 +16,7 @@ import User from "../models/User.js";
 import crypto from "crypto";
 import { sendForgotPasswordEmail } from "../utils/send-email.js";
 import { notifyPasswordChangedEmail } from "../utils/transactionalEmails.js";
+import { normalizePhone } from "../utils/phone.js";
 
 /**
  * Get client metadata from request
@@ -63,13 +64,12 @@ export const register = async (req, res) => {
     console.error("Register error:", error.message);
 
     const message =
-      error.message === "Email already registered"
+      error.message.includes("already registered") ||
+      error.message.includes("required") ||
+      error.message.includes("Invalid") ||
+      error.message.includes("Password")
         ? error.message
-        : error.message.includes("required") ||
-            error.message.includes("Invalid") ||
-            error.message.includes("Password")
-          ? error.message
-          : "Registration failed. Please try again.";
+        : "Registration failed. Please try again.";
 
     res.status(400).json({
       success: false,
@@ -234,7 +234,29 @@ export const updateProfile = async (req, res) => {
     }
 
     if (name) user.name = name;
-    if (phone) user.phone = phone;
+    if (phone) {
+      // Phone numbers are stored WITH the country code (E.164, e.g. +919876543210)
+      const normalizedPhone = normalizePhone(phone);
+      if (!normalizedPhone) {
+        return res.status(400).json({
+          message:
+            "Please enter a valid phone number with country code, e.g. +919876543210",
+        });
+      }
+
+      // Phone numbers must be unique across users
+      const existingPhoneUser = await User.findOne({
+        phone: normalizedPhone,
+        _id: { $ne: user._id },
+      });
+      if (existingPhoneUser) {
+        return res
+          .status(400)
+          .json({ message: "Phone number already registered" });
+      }
+
+      user.phone = normalizedPhone;
+    }
     if (image) user.image = image;
 
     await user.save();
@@ -245,6 +267,12 @@ export const updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Update profile error:", error);
+    // Duplicate key error from the unique email/phone index
+    if (error.code === 11000) {
+      return res
+        .status(400)
+        .json({ message: "Phone number already registered" });
+    }
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };

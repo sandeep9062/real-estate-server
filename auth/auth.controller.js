@@ -60,13 +60,12 @@ export const register = async (req, res) => {
 
     // Don't expose internal error details
     const message =
-      error.message === "Email already registered"
+      error.message.includes("already registered") ||
+      error.message.includes("required") ||
+      error.message.includes("Invalid") ||
+      error.message.includes("Password")
         ? error.message
-        : error.message.includes("required") ||
-            error.message.includes("Invalid") ||
-            error.message.includes("Password")
-          ? error.message
-          : "Registration failed. Please try again.";
+        : "Registration failed. Please try again.";
 
     res.status(400).json({
       success: false,
@@ -130,10 +129,15 @@ export const login = async (req, res) => {
  */
 export const googleAuth = async (req, res) => {
   try {
-    const { idToken } = req.body;
+    const { idToken, phone } = req.body;
     const { userAgent, ipAddress } = getClientMetadata(req);
 
-    const result = await authService.googleAuth(idToken, userAgent, ipAddress);
+    const result = await authService.googleAuth(
+      idToken,
+      phone,
+      userAgent,
+      ipAddress,
+    );
 
     // Set cookies
     res.cookie(
@@ -155,6 +159,24 @@ export const googleAuth = async (req, res) => {
     });
   } catch (error) {
     console.error("Google auth error:", error.message);
+
+    // Phone is mandatory (stored with country code). Tell the frontend so it
+    // can show the phone-capture modal and retry /auth/google with a phone.
+    if (error.code === "PHONE_REQUIRED") {
+      return res.status(400).json({
+        success: false,
+        code: "PHONE_REQUIRED",
+        message: error.message,
+      });
+    }
+
+    // Phone already taken by another account
+    if (error.message?.includes("already registered")) {
+      return res.status(400).json({
+        success: false,
+        message: error.message,
+      });
+    }
 
     res.status(401).json({
       success: false,

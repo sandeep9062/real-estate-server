@@ -24,8 +24,17 @@ const userSchema = mongoose.Schema(
       enum: ["user", "admin", "agent", "landlord", "builder"],
       default: "user",
     },
+    // Stored in E.164 format WITH the country code, e.g. "+919876543210".
+    // Phone is mandatory and unique across all users.
     phone: {
       type: String,
+      required: [true, "Phone number is required"],
+      unique: true,
+      trim: true,
+      match: [
+        /^\+[1-9]\d{7,14}$/,
+        "Phone number must include the country code, e.g. +919876543210",
+      ],
     },
     image: {
       type: String,
@@ -64,14 +73,18 @@ const userSchema = mongoose.Schema(
         },
       },
     ],
+
     googleId: {
       type: String,
       sparse: true,
       unique: true,
     },
+
     bookedVisits: [{ type: mongoose.Schema.Types.ObjectId, ref: "Booking" }],
     favProperties: [{ type: mongoose.Schema.Types.ObjectId, ref: "Property" }],
-    favRoommateProfiles: [{ type: mongoose.Schema.Types.ObjectId, ref: "RoommateProfile" }],
+    favRoommateProfiles: [
+      { type: mongoose.Schema.Types.ObjectId, ref: "RoommateProfile" },
+    ],
     recentlyViewedProperties: [
       { type: mongoose.Schema.Types.ObjectId, ref: "Property" },
     ],

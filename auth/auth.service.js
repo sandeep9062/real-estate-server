@@ -11,6 +11,7 @@ import {
 } from "./jwt.utils.js";
 import { createNotification } from "../controllers/notificationController.js";
 import { notifyWelcomeEmail } from "../utils/transactionalEmails.js";
+import { normalizePhone } from "../utils/phone.js";
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -27,14 +28,22 @@ export const registerUser = async (userData, userAgent, ipAddress) => {
   const { name, email, password, phone } = userData;
 
   // Validate required fields
-  if (!name || !email || !password) {
-    throw new Error("Name, email and password are required");
+  if (!name || !email || !password || !phone) {
+    throw new Error("Name, email, password and phone are required");
   }
 
   // Validate email format
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   if (!emailRegex.test(email)) {
     throw new Error("Invalid email format");
+  }
+
+  // Phone numbers are stored WITH the country code (E.164, e.g. +919876543210)
+  const normalizedPhone = normalizePhone(phone);
+  if (!normalizedPhone) {
+    throw new Error(
+      "Invalid phone number. Please include the country code, e.g. +919876543210",
+    );
   }
 
   // Validate password strength
@@ -48,14 +57,34 @@ export const registerUser = async (userData, userAgent, ipAddress) => {
     throw new Error("Email already registered");
   }
 
+  // Phone numbers must be unique across users
+  const existingPhoneUser = await User.findOne({ phone: normalizedPhone });
+  if (existingPhoneUser) {
+    throw new Error("Phone number already registered");
+  }
+
   // Create user
-  const user = await User.create({
-    name,
-    email: email.toLowerCase(),
-    password,
-    phone: phone || "",
-    role: "user",
-  });
+  let user;
+  try {
+    user = await User.create({
+      name,
+      email: email.toLowerCase(),
+      password,
+      phone: normalizedPhone,
+      role: "user",
+    });
+  } catch (err) {
+    // Duplicate key from the unique email/phone index (race-condition safety)
+    if (err.code === 11000) {
+      const field = Object.keys(err.keyValue || {})[0] || "email";
+      throw new Error(
+        field === "phone"
+          ? "Phone number already registered"
+          : "Email already registered",
+      );
+    }
+    throw err;
+  }
 
   // Generate tokens
   const accessToken = generateAccessToken(user);
@@ -129,7 +158,7 @@ export const loginUser = async (email, password, userAgent, ipAddress) => {
 /**
  * Google OAuth login/register
  */
-export const googleAuth = async (idToken, userAgent, ipAddress) => {
+export const googleAuth = async (idToken, phone, userAgent, ipAddress) => {
   if (!idToken) {
     throw new Error("Google ID token is required");
   }
@@ -162,18 +191,73 @@ export const googleAuth = async (idToken, userAgent, ipAddress) => {
       throw new Error("Your account has been banned. Please contact support.");
     }
 
+    // Phone is mandatory — attach it for legacy Google users that are
+    // still missing one. The frontend drives this via the phone-capture
+    // modal and a second /auth/google call with the phone included.
+    if (!user.phone) {
+      const error = new Error(
+        "Phone number is required. Please enter your phone number to continue.",
+      );
+      error.code = "PHONE_REQUIRED";
+      if (!phone) {
+        throw error;
+      }
+      const normalizedPhone = normalizePhone(phone);
+      if (!normalizedPhone) {
+        error.message =
+          "Invalid phone number. Please include the country code, e.g. +919876543210";
+        throw error;
+      }
+      // Phone numbers must be unique across users
+      const existingPhoneUser = await User.findOne({
+        phone: normalizedPhone,
+        _id: { $ne: user._id },
+      });
+      if (existingPhoneUser) {
+        throw new Error("Phone number already registered");
+      }
+      user.phone = normalizedPhone;
+    }
+
     // Link Google ID if not already linked
     if (!user.googleId) {
       user.googleId = googleId;
       await user.save();
+    } else if (user.isModified("phone")) {
+      await user.save();
     }
   } else {
+    // Phone is mandatory for every account (stored WITH country code)
+    if (!phone) {
+      const error = new Error(
+        "Phone number is required. Please enter your phone number to continue.",
+      );
+      error.code = "PHONE_REQUIRED";
+      throw error;
+    }
+
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
+      const error = new Error(
+        "Invalid phone number. Please include the country code, e.g. +919876543210",
+      );
+      error.code = "PHONE_REQUIRED";
+      throw error;
+    }
+
+    // Phone numbers must be unique across users
+    const existingPhoneUser = await User.findOne({ phone: normalizedPhone });
+    if (existingPhoneUser) {
+      throw new Error("Phone number already registered");
+    }
+
     // Create new user
     user = await User.create({
       name: name || email.split("@")[0],
       email: email.toLowerCase(),
       googleId,
       image: picture,
+      phone: normalizedPhone,
       role: "user",
     });
 

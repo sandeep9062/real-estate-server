@@ -9,6 +9,7 @@ import {
 } from "../utils/transactionalEmails.js";
 import mongoose from "mongoose";
 import { transformPropertyCoordinates } from "../utils/propertyFilter.js";
+import { normalizePhone } from "../utils/phone.js";
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -78,8 +79,19 @@ export const createUser = async (req, res) => {
   const { name, email, phone, role } = req.body;
 
   try {
-    if (!name || !email) {
-      return res.status(400).json({ message: "Name and email are required" });
+    if (!name || !email || !phone) {
+      return res
+        .status(400)
+        .json({ message: "Name, email and phone are required" });
+    }
+
+    // Validate phone format (must include the country code, e.g. +919876543210)
+    const normalizedPhone = normalizePhone(phone);
+    if (!normalizedPhone) {
+      return res.status(400).json({
+        message:
+          "Please enter a valid phone number with country code, e.g. +919876543210",
+      });
     }
 
     let user = await User.findOne({ email });
@@ -88,12 +100,36 @@ export const createUser = async (req, res) => {
       return res.status(400).json({ message: "User already exists" });
     }
 
-    user = new User({ name, email, phone, role });
+    // Phone numbers must be unique across users
+    const existingPhoneUser = await User.findOne({ phone: normalizedPhone });
+    if (existingPhoneUser) {
+      return res
+        .status(400)
+        .json({ message: "Phone number already registered" });
+    }
+
+    user = new User({ name, email, phone: normalizedPhone, role });
     await user.save();
 
     res.status(201).json(user);
   } catch (error) {
     console.error("Create user error:", error);
+    // Duplicate key error from the unique email/phone index
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue || {})[0];
+      return res.status(400).json({
+        message:
+          field === "phone"
+            ? "Phone number already registered"
+            : "User already exists",
+      });
+    }
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message:
+          Object.values(error.errors)[0]?.message || "Validation failed",
+      });
+    }
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -122,15 +158,54 @@ export const updateUser = async (req, res) => {
 
     user.name = name || user.name;
     user.email = email || user.email;
-    user.phone = phone || user.phone;
+    if (phone) {
+      // Phone numbers are stored WITH the country code (E.164, e.g. +919876543210)
+      const normalizedPhone = normalizePhone(phone);
+      if (!normalizedPhone) {
+        return res.status(400).json({
+          message:
+            "Please enter a valid phone number with country code, e.g. +919876543210",
+        });
+      }
+      user.phone = normalizedPhone;
+    }
     user.role = role || user.role;
     user.isActive = isActive === undefined ? user.isActive : isActive;
+
+    // Phone numbers must be unique across users
+    if (phone && user.isModified("phone")) {
+      const existingPhoneUser = await User.findOne({
+        phone: user.phone,
+        _id: { $ne: user._id },
+      });
+      if (existingPhoneUser) {
+        return res
+          .status(400)
+          .json({ message: "Phone number already registered" });
+      }
+    }
 
     const updatedUser = await user.save();
 
     res.json(updatedUser);
   } catch (error) {
     console.error("Error updating user:", error);
+    // Duplicate key error from the unique email/phone index
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue || {})[0];
+      return res.status(400).json({
+        message:
+          field === "phone"
+            ? "Phone number already registered"
+            : "Email already registered",
+      });
+    }
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message:
+          Object.values(error.errors)[0]?.message || "Validation failed",
+      });
+    }
     res.status(500).json({ message: "Server Error" });
   }
 };
@@ -238,9 +313,32 @@ export const updateProfile = async (req, res) => {
 
     const imageUrl = req.file ? req.file.path : user.image || "";
 
+    if (phone) {
+      // Phone numbers are stored WITH the country code (E.164, e.g. +919876543210)
+      const normalizedPhone = normalizePhone(phone);
+      if (!normalizedPhone) {
+        return res.status(400).json({
+          message:
+            "Please enter a valid phone number with country code, e.g. +919876543210",
+        });
+      }
+
+      // Phone numbers must be unique across users
+      const existingPhoneUser = await User.findOne({
+        phone: normalizedPhone,
+        _id: { $ne: user._id },
+      });
+      if (existingPhoneUser) {
+        return res
+          .status(400)
+          .json({ message: "Phone number already registered" });
+      }
+
+      user.phone = normalizedPhone;
+    }
+
     user.name = name || user.name;
     user.email = email || user.email;
-    user.phone = phone || user.phone;
     user.image = imageUrl;
 
     const updatedUser = await user.save();
@@ -255,6 +353,22 @@ export const updateProfile = async (req, res) => {
     });
   } catch (error) {
     console.error("Profile update error:", error);
+    // Duplicate key error from the unique email/phone index
+    if (error.code === 11000) {
+      const field = Object.keys(error.keyValue || {})[0];
+      return res.status(400).json({
+        message:
+          field === "phone"
+            ? "Phone number already registered"
+            : "Email already registered",
+      });
+    }
+    if (error.name === "ValidationError") {
+      return res.status(400).json({
+        message:
+          Object.values(error.errors)[0]?.message || "Validation failed",
+      });
+    }
     res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
