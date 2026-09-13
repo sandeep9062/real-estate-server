@@ -184,6 +184,7 @@ export const googleAuth = async (idToken, phone, userAgent, ipAddress) => {
 
   // Find or create user
   let user = await User.findOne({ email: email.toLowerCase() });
+  const isNewUser = !user;
 
   if (user) {
     // Existing user - check if banned
@@ -284,6 +285,9 @@ export const googleAuth = async (idToken, phone, userAgent, ipAddress) => {
     user: user.toJSON(),
     accessToken,
     refreshToken: rawRefreshToken,
+    // Tells the frontend whether this Google sign-in just created the
+    // account — new accounts must always go through role selection.
+    isNewUser,
   };
 };
 

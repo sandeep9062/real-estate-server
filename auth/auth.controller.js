@@ -156,6 +156,9 @@ export const googleAuth = async (req, res) => {
       message: "Google authentication successful",
       user: result.user,
       token: result.accessToken, // Include token in response for frontend fallback
+      // True when this sign-in just created the account — the frontend
+      // uses it to force new accounts through /choose-role.
+      isNewUser: Boolean(result.isNewUser),
     });
   } catch (error) {
     console.error("Google auth error:", error.message);
