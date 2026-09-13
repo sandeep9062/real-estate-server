@@ -30,7 +30,16 @@ export const createEnquiry = async (req, res) => {
 
 export const getAllEnquiries = async (req, res) => {
   try {
-    const enquiries = await Enquiry.find().sort({ createdAt: -1 });
+    // Whitelisted query filters used by the admin dashboard toolbar
+    // (deal / type / availability / furnishing).
+    const { deal, type, availability, furnishing } = req.query;
+    const filter = {};
+    if (deal) filter.deal = deal;
+    if (type) filter.type = type;
+    if (availability) filter.availability = availability;
+    if (furnishing) filter.furnishing = furnishing;
+
+    const enquiries = await Enquiry.find(filter).sort({ createdAt: -1 });
     res.status(200).json(enquiries);
   } catch (error) {
     console.error("Error fetching enquiries:", error);
