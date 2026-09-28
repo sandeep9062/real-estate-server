@@ -14,6 +14,7 @@ import {
   getSimilarProperties,
   recordPropertyView,
   getPropertiesForSitemap,
+  getSeoGeoListings,
 } from "../controllers/propertyController.js";
 
 import {
@@ -32,6 +33,7 @@ const propertyUpload = upload.fields([
 
 router.get("/stats/hero", getHeroStats);
 router.get("/sitemap-data", getPropertiesForSitemap);
+router.get("/seo/geo-listings", getSeoGeoListings);
 router
   .route("/")
   .get(optionalAuth, getProperties)

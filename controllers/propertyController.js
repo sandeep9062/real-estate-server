@@ -308,6 +308,70 @@ const createProperty = asyncHandler(async (req, res) => {
   res.status(201).json(createdProperty);
 });
 
+// @desc    Geo-proximity listings for programmatic SEO landmark pages.
+//          Runs ONE $geoNear aggregation per request against the 2dsphere
+//          index on location.coordinates. Excludes documents whose
+//          coordinates are [0, 0] — that is the schema default for unset
+//          coordinates and a real point (Gulf of Guinea), not missing data;
+//          without this filter it silently pollutes proximity results.
+// @route   GET /api/properties/seo/geo-listings?lat&lng&km&deal&propertyCategory&priceMax&limit
+// @access  Public
+const getSeoGeoListings = asyncHandler(async (req, res) => {
+  const lat = Number(req.query.lat);
+  const lng = Number(req.query.lng);
+  const km = Math.min(Number(req.query.km) || 0, 50); // hard cap: 50 km
+
+  if (
+    !Number.isFinite(lat) ||
+    !Number.isFinite(lng) ||
+    km <= 0 ||
+    Math.abs(lat) > 90 ||
+    Math.abs(lng) > 180
+  ) {
+    res.status(400);
+    throw new Error(
+      "lat and lng (valid degrees) and km (0 < km <= 50) are required",
+    );
+  }
+
+  const query = {
+    isActive: true,
+    deletedAt: null,
+    "location.coordinates.coordinates": { $ne: [0, 0] },
+  };
+  if (req.query.deal) query.deal = req.query.deal;
+  if (req.query.propertyCategory) {
+    query.propertyCategory = req.query.propertyCategory;
+  }
+  if (req.query.priceMax) {
+    query.price = { $lte: Number(req.query.priceMax) };
+  }
+
+  const limit = Math.min(Number(req.query.limit) || 500, 1000);
+
+  const docs = await Property.aggregate([
+    {
+      $geoNear: {
+        near: { type: "Point", coordinates: [lng, lat] },
+        distanceField: "distanceMeters",
+        maxDistance: km * 1000, // meters
+        query,
+        spherical: true,
+      },
+    },
+    // NOTE: the `limit` option inside $geoNear was removed in modern MongoDB
+    // servers ("$geoNear no longer supports the 'limit' parameter. Use a
+    // $limit stage instead."), which made this whole endpoint 500 — and with
+    // it every landmark SEO page and landmark quick link. $geoNear already
+    // returns nearest-first, so a following $limit stage keeps the `limit`
+    // closest matches.
+    { $limit: limit },
+    { $project: { distanceMeters: 0 } },
+  ]);
+
+  res.json({ success: true, count: docs.length, data: docs });
+});
+
 // @desc    Get all properties (paginated) — with advanced NL-search support
 // @route   GET /api/properties
 // @access  Public
@@ -1046,4 +1110,5 @@ export {
   recordPropertyView,
   getHeroStats,
   getPropertiesForSitemap,
+  getSeoGeoListings,
 };
