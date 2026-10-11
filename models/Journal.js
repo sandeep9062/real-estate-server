@@ -8,6 +8,8 @@ const journalSchema = new mongoose.Schema(
     excerpt: String,
     content: String,
     coverImage: String,
+    altText: String,
+    author: { type: String, default: "PropertyBulbul Editorial" },
     targetSector: String,
     metaTitle: String,
     keywords: [String],

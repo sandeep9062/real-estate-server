@@ -1,9 +1,103 @@
 import Journal from "../models/Journal.js";
 import asyncHandler from "express-async-handler";
+import {
+  normalizeMarkdown,
+  slugify,
+  parseBooleanFlag,
+} from "../utils/markdown.js";
+
+// Parse keywords arriving either as an array or as a JSON/comma string
+// (multipart FormData always sends strings).
+function parseKeywordsValue(keywords) {
+  if (keywords === undefined || keywords === null) return undefined;
+  if (Array.isArray(keywords)) return keywords;
+  if (typeof keywords !== "string") return keywords;
+  const trimmed = keywords.trim();
+  if (!trimmed) return [];
+  try {
+    return JSON.parse(trimmed);
+  } catch {
+    return trimmed
+      .split(",")
+      .map((k) => k.trim())
+      .filter(Boolean);
+  }
+}
+
+// Clear 400 message for Mongo duplicate-key errors (slug or title).
+function duplicateKeyMessage(err) {
+  const keyValue = err.keyValue || {};
+  const pattern = err.keyPattern || {};
+  const fields = Object.keys(keyValue).length
+    ? Object.keys(keyValue)
+    : Object.keys(pattern);
+  if (fields.includes("slug")) return "A journal with this slug already exists";
+  if (fields.includes("title"))
+    return "A journal with this title already exists";
+  return "A journal with this slug or title already exists";
+}
+
+// Trimmed non-empty string, or undefined when missing/blank.
+function nonEmptyString(value) {
+  if (typeof value !== "string") return undefined;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
+}
+
+// Uploaded file wins; otherwise accept a pasted image URL from the form body.
+function coverImageFromRequest(req) {
+  if (req.file && req.file.secure_url) return req.file.secure_url;
+  const fromBody = req.body ? req.body.coverImage : undefined;
+  return nonEmptyString(fromBody) || null;
+}
+
+// Clamp pagination: page >= 1, 1 <= limit <= 100.
+function clampPagination(query, defaultLimit) {
+  let page = parseInt(query.page, 10);
+  if (!Number.isFinite(page) || page < 1) page = 1;
+  let limit = parseInt(query.limit, 10);
+  if (!Number.isFinite(limit)) limit = defaultLimit;
+  if (limit < 1) limit = 1;
+  if (limit > 100) limit = 100;
+  return { page, limit };
+}
 
 // @desc    Create new journal post
 // @route   POST /api/journals
 // @access  Private/Admin
+/** Best-effort ISR revalidation. `POST /api/revalidate` is the only place where
+ *  the server-only `revalidatePath`/`revalidateTag` can run — they cannot
+ *  execute inside this Express process, and the public frontend never triggers
+ *  writes (it is read-only and dependent on the backend). The backend calls
+ *  this after a successful journal create/update/delete, which then revalidates
+ *  the Next.js app's journal pages and tags. Never blocks the admin response. */
+async function revalidateJournal({ action, slug }) {
+  const nextJsAppUrl =
+    process.env.NEXTJS_APP_URL ||
+    process.env.NEXT_PUBLIC_URL ||
+    "https://www.propertybulbul.com";
+  try {
+    void (async () => {
+      const nextJsAppUrl =
+        process.env.NEXTJS_APP_URL || process.env.NEXT_PUBLIC_URL || "https://www.propertybulbul.com";
+      try {
+        await fetch(`${nextJsAppUrl}/api/revalidate`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "x-admin-secret": process.env.ADMIN_REVALIDATE_SECRET,
+          },
+          body: JSON.stringify({ action, slug }),
+        });
+      } catch (err) {
+        console.warn("Journal revalidation queue failed:", err);
+      }
+    })();
+  } catch (err) {
+    console.warn("Journal revalidation queue failed:", err);
+  }
+}
+
 const createJournal = asyncHandler(async (req, res) => {
   const {
     title,
@@ -15,55 +109,64 @@ const createJournal = asyncHandler(async (req, res) => {
     metaTitle,
     keywords,
     isActive,
+    isFeatured,
+    altText,
+    author,
   } = req.body;
-  const coverImage = req.file ? req.file.secure_url : null;
+  const coverImage = coverImageFromRequest(req);
 
-  const journalExists = await Journal.findOne({ title });
+  if (!title || !String(title).trim()) {
+    res.status(400);
+    throw new Error("Title is required");
+  }
+
+  const journalExists = await Journal.findOne({ title: String(title).trim() });
 
   if (journalExists) {
     res.status(400);
     throw new Error("Journal post with this title already exists");
   }
 
-  let parsedKeywords = keywords;
-  if (typeof keywords === "string") {
-    try {
-      parsedKeywords = JSON.parse(keywords);
-    } catch {
-      parsedKeywords = keywords
-        .split(",")
-        .map((k) => k.trim())
-        .filter(Boolean);
-    }
-  }
+  const parsedKeywords = parseKeywordsValue(keywords);
+  const activeFlag = parseBooleanFlag(isActive);
+  const featuredFlag = parseBooleanFlag(isFeatured);
 
   const journal = new Journal({
-    title,
-    slug: slug
-      ? slug.toLowerCase().replace(/ /g, "-")
-      : title.toLowerCase().replace(/ /g, "-"),
+    title: String(title).trim(),
+    slug: slug && String(slug).trim() ? slugify(slug) : slugify(title),
     category,
     excerpt,
-    isActive,
-    content,
+    isActive: activeFlag === undefined ? true : activeFlag,
+    isFeatured: featuredFlag === undefined ? false : featuredFlag,
+    content: normalizeMarkdown(content || ""),
     coverImage,
+    altText,
+    author,
     targetSector,
     metaTitle,
     keywords: parsedKeywords,
   });
 
-  const createdJournal = await journal.save();
-  res.status(201).json(createdJournal);
+  try {
+    const createdJournal = await journal.save();
+    revalidateJournal({ action: "create", slug: createdJournal.slug });
+    res.status(201).json(createdJournal);
+  } catch (err) {
+    if (err && err.code === 11000) {
+      res.status(400);
+      throw new Error(duplicateKeyMessage(err));
+    }
+    throw err;
+  }
 });
 
 // @desc    Get all journal posts (with pagination) — only active posts
 // @route   GET /api/journals
 // @access  Public
 const getJournals = asyncHandler(async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  // Cap the page size so a client can never force the DB to return/index an
-  // unbounded number of full documents in a single request.
-  const limit = Math.min(parseInt(req.query.limit) || 100, 100);
+  // Clamp pagination so a client can never force the DB to return/index an
+  // unbounded number of documents in a single request.
+  const { page, limit } = clampPagination(req.query, 100);
   const skip = (page - 1) * limit;
 
   // Build optional filter based on query params
@@ -73,6 +176,10 @@ const getJournals = asyncHandler(async (req, res) => {
   }
   if (req.query.sector) {
     filter.targetSector = req.query.sector;
+  }
+  // Lets related-article queries omit the article being viewed.
+  if (req.query.exclude) {
+    filter.slug = { $ne: req.query.exclude };
   }
 
   const total = await Journal.countDocuments(filter);
@@ -139,50 +246,80 @@ const updateJournal = asyncHandler(async (req, res) => {
     isActive,
     isFeatured,
     keywords,
+    altText,
+    author,
+    removeCover,
   } = req.body;
-  const coverImage = req.file ? req.file.secure_url : null;
+  const coverImage = coverImageFromRequest(req);
 
   const journal = await Journal.findById(req.params.id);
 
-  if (journal) {
-    journal.title = title || journal.title;
-    journal.slug = slug
-      ? slug.toLowerCase().replace(/ /g, "-")
-      : title
-        ? title.toLowerCase().replace(/ /g, "-")
-        : journal.slug;
-    journal.category = category || journal.category;
-    journal.excerpt = excerpt || journal.excerpt;
-    journal.content = content || journal.content;
-    journal.coverImage = coverImage || journal.coverImage;
-    journal.targetSector = targetSector || journal.targetSector;
-    journal.metaTitle = metaTitle || journal.metaTitle;
-    if (isActive !== undefined) {
-      journal.isActive = isActive;
-    }
-    if (isFeatured !== undefined) {
-      journal.isFeatured = isFeatured;
-    }
-    if (keywords !== undefined) {
-      if (typeof keywords === "string") {
-        try {
-          journal.keywords = JSON.parse(keywords);
-        } catch {
-          journal.keywords = keywords
-            .split(",")
-            .map((k) => k.trim())
-            .filter(Boolean);
-        }
-      } else {
-        journal.keywords = keywords;
-      }
-    }
-
-    const updatedJournal = await journal.save();
-    res.json(updatedJournal);
-  } else {
+  if (!journal) {
     res.status(404);
     throw new Error("Journal post not found");
+  }
+
+  if (title !== undefined && String(title).trim()) {
+    const trimmedTitle = String(title).trim();
+    const conflict = await Journal.findOne({
+      title: trimmedTitle,
+      _id: { $ne: journal._id },
+    });
+    if (conflict) {
+      res.status(400);
+      throw new Error("Another journal post with this title already exists");
+    }
+    journal.title = trimmedTitle;
+  }
+  // Slug rule: never regenerate from the title. Only act when the request
+  // explicitly sends a slug, and do nothing when the sent value already
+  // equals the stored slug -- a plain "open and save" must never rewrite
+  // (or normalize) an existing URL, since changing live URLs hurts SEO.
+  if (
+    slug !== undefined &&
+    String(slug).trim() &&
+    String(slug) !== journal.slug
+  ) {
+    journal.slug = slugify(slug);
+  }
+  // Update semantics: empty-string title/content/slug are IGNORED (never
+  // cleared). Only excerpt, metaTitle, altText, targetSector and category
+  // may be cleared by sending an empty string.
+  if (category !== undefined) journal.category = category;
+  if (excerpt !== undefined) journal.excerpt = excerpt;
+  if (content !== undefined && String(content).trim())
+    journal.content = normalizeMarkdown(content);
+  if (coverImage) journal.coverImage = coverImage;
+  // Explicit cover removal (FormData sends "true" as a string).
+  if (removeCover === true || removeCover === "true") journal.coverImage = "";
+  if (targetSector !== undefined) journal.targetSector = targetSector;
+  if (metaTitle !== undefined) journal.metaTitle = metaTitle;
+  if (altText !== undefined) journal.altText = altText;
+  if (author !== undefined) journal.author = author;
+  const activeFlag = parseBooleanFlag(isActive);
+  if (activeFlag !== undefined) {
+    journal.isActive = activeFlag;
+  }
+  const featuredFlag = parseBooleanFlag(isFeatured);
+  if (featuredFlag !== undefined) {
+    journal.isFeatured = featuredFlag;
+  }
+  const parsedKeywords = parseKeywordsValue(keywords);
+  if (parsedKeywords !== undefined) {
+    journal.keywords = parsedKeywords;
+  }
+
+  try {
+    const updatedJournal = await journal.save();
+    // Best-effort: tell the Next.js app to revalidate the updated journal.
+    revalidateJournal({ action: "update", slug: updatedJournal.slug });
+    res.json(updatedJournal);
+  } catch (err) {
+    if (err && err.code === 11000) {
+      res.status(400);
+      throw new Error(duplicateKeyMessage(err));
+    }
+    throw err;
   }
 });
 
@@ -194,6 +331,8 @@ const deleteJournal = asyncHandler(async (req, res) => {
 
   if (journal) {
     await journal.deleteOne();
+    // Best-effort: tell the Next.js app to revalidate the removed journal.
+    revalidateJournal({ action: "delete", slug: journal.slug });
     res.json({ message: "Journal post removed" });
   } else {
     res.status(404);
@@ -256,8 +395,7 @@ const getJournalsForSitemap = asyncHandler(async (req, res) => {
 // @route   GET /api/journals/all
 // @access  Private/Admin
 const getAllJournals = asyncHandler(async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 10;
+  const { page, limit } = clampPagination(req.query, 10);
   const skip = (page - 1) * limit;
 
   const filter = {};
@@ -269,10 +407,13 @@ const getAllJournals = asyncHandler(async (req, res) => {
   }
 
   const total = await Journal.countDocuments(filter);
+  // List views never render the body, so exclude it for speed.
   const journals = await Journal.find(filter)
+    .select("-content")
     .sort({ createdAt: -1 })
     .skip(skip)
-    .limit(limit);
+    .limit(limit)
+    .lean();
 
   res.json({
     journals,

@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import {
   createJournal,
   getJournals,
@@ -16,6 +17,19 @@ import upload from "../middlewares/multer.js";
 import { protect, checkAdmin } from "../middlewares/authMiddleware.js";
 
 const router = express.Router();
+
+// Conservative guard on the public view counter: 30 views/min/IP.
+// Safe because app.js sets trust proxy to 1, so req.ip is the real client
+// IP behind the Render proxy (without that, all visitors would share one
+// IP and throttle each other). Only successful increments count, and the
+// limiter never changes the response shape -- it returns the standard
+// express-rate-limit 429 JSON only when the budget is exceeded.
+const journalViewLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+});
 
 router.get("/sitemap-data", getJournalsForSitemap);
 router.get("/categories", getJournalCategories);
@@ -38,6 +52,6 @@ router
 router.route("/slug/:slug").get(getJournalBySlug);
 
 // Public: count a view when the journal detail page is opened
-router.route("/:slug/view").post(trackJournalView);
+router.route("/:slug/view").post(journalViewLimiter, trackJournalView);
 
 export default router;
