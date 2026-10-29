@@ -1,5 +1,5 @@
 import express from "express";
-import { protect } from "../middlewares/authMiddleware.js"; // adjust to your actual auth middleware path/name
+import { protect, optionalAuth } from "../middlewares/authMiddleware.js"; // adjust to your actual auth middleware path/name
 import { restrictToResidents } from "../middlewares/restrictToResidents.js"; // adjust to your actual middleware path/name
 import upload from "../middlewares/multer.js"; // multer-cloudinary for photo/video uploads
 
@@ -32,12 +32,24 @@ const router = express.Router();
 // ---- Profile ----
 // Creation/document-upload are resident-only (no agents/builders).
 // Reading/searching is open to any authenticated user.
-router.post("/profile", protect, restrictToResidents, upload.array("photos"), createProfile);
-router.patch("/profile", protect, restrictToResidents, upload.array("photos"), updateProfile);
+router.post(
+  "/profile",
+  protect,
+  restrictToResidents,
+  upload.array("photos"),
+  createProfile,
+);
+router.patch(
+  "/profile",
+  protect,
+  restrictToResidents,
+  upload.array("photos"),
+  updateProfile,
+);
 router.get("/profile/me", protect, getOwnProfile);
-router.get("/profile/:id", protect, getPublicProfile);
+router.get("/profile/:id", optionalAuth, getPublicProfile);
 router.post("/profile/documents", protect, restrictToResidents, uploadDocument);
-router.get("/seekers", protect, searchSeekers);
+router.get("/seekers", optionalAuth, searchSeekers);
 
 // ---- Room/Flat ----
 // upload.array("photos") accepts new photo/video uploads (Cloudinary via
@@ -56,13 +68,13 @@ router.patch(
   upload.array("photos"),
   updateRoomFlat,
 );
-router.get("/browse", protect, browseRoomsAndFlats);
+router.get("/browse", browseRoomsAndFlats);
 router.get("/swap-matches", protect, searchSwapMatches);
 
 // ---- Connections ----
 router.post("/connections", protect, sendConnectionRequest);
 router.patch("/connections/:id", protect, respondToConnectionRequest);
-router.get("/connections", protect, listMyConnections);
+router.get("/connections", optionalAuth, listMyConnections);
 
 // ---- Favourite Roommate Profiles ----
 router.post("/favourite/:profileId", protect, toggleFavRoommate);

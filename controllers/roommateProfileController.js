@@ -44,7 +44,11 @@ function normalizeSearchArea(searchArea) {
  */
 function serializeProfile(doc) {
   if (!doc) return doc;
-  const out = { ...doc };
+  // `doc` may be a Mongoose document (needs .toObject()) or a plain object
+  // already serialized (e.g. from searchSeekers, which passes s.toObject()).
+  // Use toObject() only when it exists so both paths stay valid.
+  const source = typeof doc.toObject === "function" ? doc.toObject() : doc;
+  const out = { ...source };
 
   // Main _id
   out._id = String(out._id);
@@ -443,7 +447,7 @@ export async function searchSeekers(req, res) {
     // have one — cheap since matchScoreAgainst is a pure in-memory method.
     // Also serialize each profile so populated refs and dates become plain
     // strings the frontend can work with.
-    const myProfile = await RoommateProfile.findOne({ user: req.user._id });
+    const myProfile = req.user ? await RoommateProfile.findOne({ user: req.user._id }) : null;
     const withScores = seekers.map((s) => ({
       profile: serializeProfile(s.toObject()),
       matchScore: myProfile ? myProfile.matchScoreAgainst(s) : null,

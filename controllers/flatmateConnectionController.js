@@ -122,6 +122,9 @@ export async function respondToConnectionRequest(req, res) {
  */
 export async function listMyConnections(req, res) {
   try {
+    if (!req.user) {
+      return res.json([]);
+    }
     const myProfile = await RoommateProfile.findOne({ user: req.user._id });
     if (!myProfile) {
       return res.json([]);
