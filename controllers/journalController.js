@@ -93,6 +93,7 @@ function clampPagination(query, defaultLimit) {
   return { page, limit };
 }
 
+const createJournal = asyncHandler(async (req, res) => {
   const statusValue = parseJournalStatus(status);
   const featuredFlag = parseBooleanFlag(isFeatured);
   const metaDescriptionValue = metaDescription || excerpt;
@@ -227,23 +228,6 @@ const updateJournal = asyncHandler(async (req, res) => {
     altText,
     author,
     removeCover,
-  const {
-    title,
-    slug,
-    category,
-    excerpt,
-    targetSector,
-    targetCity,
-    series,
-    articleNumber,
-    metaTitle,
-    metaDescription,
-    keywords,
-    tags,
-    status,
-    isFeatured,
-    altText,
-    author,
   } = req.body;
   const coverImage = coverImageFromRequest(req);
 
