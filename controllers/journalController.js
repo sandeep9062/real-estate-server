@@ -185,7 +185,6 @@ const createJournal = asyncHandler(async (req, res) => {
 
   try {
     const createdJournal = await journal.save();
-    revalidateJournal({ action: "create", slug: createdJournal.slug });
     res.status(201).json(createdJournal);
   } catch (err) {
     if (err && err.code === 11000) {
@@ -364,8 +363,6 @@ const updateJournal = asyncHandler(async (req, res) => {
 
   try {
     const updatedJournal = await journal.save();
-    // Best-effort: tell the Next.js app to revalidate the updated journal.
-    revalidateJournal({ action: "update", slug: updatedJournal.slug });
     res.json(updatedJournal);
   } catch (err) {
     if (err && err.code === 11000) {
@@ -385,8 +382,6 @@ const deleteJournal = asyncHandler(async (req, res) => {
   if (journal) {
     journal.deletedAt = new Date();
     await journal.save();
-    // Best-effort: tell the Next.js app to revalidate the removed journal.
-    revalidateJournal({ action: "delete", slug: journal.slug });
     res.json({ message: "Journal post removed" });
   } else {
     res.status(404);
