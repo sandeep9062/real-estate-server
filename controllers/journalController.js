@@ -22,6 +22,7 @@ function parseKeywordsValue(keywords) {
       .map((k) => k.trim())
       .filter(Boolean);
   }
+}
 
 // Journal status is the model's publication state (draft | published | archived).
 // The model strips unknown fields, so a boolean `isActive` would be ignored and
@@ -72,42 +73,34 @@ function clampPagination(query, defaultLimit) {
   return { page, limit };
 }
 
-// @desc    Create new journal post
-// @route   POST /api/journals
-// @access  Private/Admin
 /** Best-effort ISR revalidation. `POST /api/revalidate` is the only place where
  *  the server-only `revalidatePath`/`revalidateTag` can run — they cannot
  *  execute inside this Express process, and the public frontend never triggers
  *  writes (it is read-only and dependent on the backend). The backend calls
  *  this after a successful journal create/update/delete, which then revalidates
  *  the Next.js app's journal pages and tags. Never blocks the admin response. */
-async function revalidateJournal({ action, slug }) {
+function revalidateJournal({ action, slug }) {
   const nextJsAppUrl =
     process.env.NEXTJS_APP_URL ||
     process.env.NEXT_PUBLIC_URL ||
     "https://www.propertybulbul.com";
-  try {
-    void (async () => {
-      const nextJsAppUrl =
-        process.env.NEXTJS_APP_URL || process.env.NEXT_PUBLIC_URL || "https://www.propertybulbul.com";
-      try {
-        await fetch(`${nextJsAppUrl}/api/revalidate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-secret": process.env.ADMIN_REVALIDATE_SECRET,
-          },
-          body: JSON.stringify({ action, slug }),
-        });
-      } catch (err) {
-        console.warn("Journal revalidation queue failed:", err);
-      }
-    })();
-  } catch (err) {
-    console.warn("Journal revalidation queue failed:", err);
-  }
+
+  // Fire-and-forget: intentionally not awaited.
+  fetch(`${nextJsAppUrl}/api/revalidate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-secret": process.env.ADMIN_REVALIDATE_SECRET,
+    },
+    body: JSON.stringify({ action, slug }),
+  }).catch((err) => {
+    console.warn("Journal revalidation failed:", err);
+  });
 }
 
+// @desc    Create new journal post
+// @route   POST /api/journals
+// @access  Private/Admin
 const createJournal = asyncHandler(async (req, res) => {
   const {
     title,
@@ -225,7 +218,9 @@ const getJournals = asyncHandler(async (req, res) => {
 // @route   GET /api/journals/categories
 // @access  Public
 const getJournalCategories = asyncHandler(async (req, res) => {
-  const categories = await Journal.distinct("category", { status: "published" });
+  const categories = await Journal.distinct("category", {
+    status: "published",
+  });
   res.json({
     success: true,
     categories: categories.filter(Boolean),
@@ -411,7 +406,10 @@ const trackJournalView = asyncHandler(async (req, res) => {
 // @route   GET /api/journals/sitemap-data
 // @access  Public
 const getJournalsForSitemap = asyncHandler(async (req, res) => {
-  const journals = await Journal.find({ status: "published", deletedAt: null }, "slug updatedAt")
+  const journals = await Journal.find(
+    { status: "published", deletedAt: null },
+    "slug updatedAt",
+  )
     .sort({ updatedAt: -1 })
     .lean();
 
