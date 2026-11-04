@@ -65,7 +65,7 @@ const journalSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["draft", "published", "archived"],
-      default: "draft",
+      default: "published",
     },
     publishedAt: Date,
     lastReviewedAt: Date,
