@@ -99,39 +99,6 @@ function clampPagination(query, defaultLimit) {
  *  writes (it is read-only and dependent on the backend). The backend calls
  *  this after a successful journal create/update/delete, which then revalidates
  *  the Next.js app's journal pages and tags. Never blocks the admin response. */
-function revalidateJournal({ action, slug }) {
-  const nextJsAppUrl =
-    process.env.NEXTJS_APP_URL ||
-    process.env.NEXT_PUBLIC_URL ||
-    "https://www.propertybulbul.com";
-
-  // Fire-and-forget: intentionally not awaited.
-  fetch(`${nextJsAppUrl}/api/revalidate`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-admin-secret": process.env.ADMIN_REVALIDATE_SECRET,
-    },
-    body: JSON.stringify({ action, slug }),
-  }).catch((err) => {
-    console.warn("Journal revalidation failed:", err);
-  });
-}
-
-// @desc    Create new journal post
-// @route   POST /api/journals
-// @access  Private/Admin
-const createJournal = asyncHandler(async (req, res) => {
-  const {
-    title,
-    slug,
-    category,
-    excerpt,
-    content,
-    targetSector,
-    targetCity,
-    series,
-    articleNumber,
     metaTitle,
     metaDescription,
     keywords,
