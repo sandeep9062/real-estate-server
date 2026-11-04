@@ -93,37 +93,6 @@ function clampPagination(query, defaultLimit) {
   return { page, limit };
 }
 
-/** Best-effort ISR revalidation. `POST /api/revalidate` is the only place where
- *  the server-only `revalidatePath`/`revalidateTag` can run — they cannot
- *  execute inside this Express process, and the public frontend never triggers
- *  writes (it is read-only and dependent on the backend). The backend calls
- *  this after a successful journal create/update/delete, which then revalidates
- *  the Next.js app's journal pages and tags. Never blocks the admin response. */
-    metaTitle,
-    metaDescription,
-    keywords,
-    tags,
-    status,
-    isFeatured,
-    altText,
-    author,
-  } = req.body;
-  const coverImage = coverImageFromRequest(req);
-
-  if (!title || !String(title).trim()) {
-    res.status(400);
-    throw new Error("Title is required");
-  }
-
-  const journalExists = await Journal.findOne({ title: String(title).trim() });
-
-  if (journalExists) {
-    res.status(400);
-    throw new Error("Journal post with this title already exists");
-  }
-
-  const parsedTags = parseKeywordsValue(tags);
-  const parsedKeywords = parseKeywordsValue(keywords);
   const statusValue = parseJournalStatus(status);
   const featuredFlag = parseBooleanFlag(isFeatured);
   const metaDescriptionValue = metaDescription || excerpt;
@@ -258,6 +227,23 @@ const updateJournal = asyncHandler(async (req, res) => {
     altText,
     author,
     removeCover,
+  const {
+    title,
+    slug,
+    category,
+    excerpt,
+    targetSector,
+    targetCity,
+    series,
+    articleNumber,
+    metaTitle,
+    metaDescription,
+    keywords,
+    tags,
+    status,
+    isFeatured,
+    altText,
+    author,
   } = req.body;
   const coverImage = coverImageFromRequest(req);
 
