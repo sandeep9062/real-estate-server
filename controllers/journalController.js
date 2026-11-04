@@ -35,6 +35,26 @@ function parseJournalStatus(value) {
   return ALLOWED_JOURNAL_STATUSES.includes(candidate) ? candidate : undefined;
 }
 
+// Normalize author to the rich { name, role, avatar } shape.
+// Accepts a plain string (backward-compat) or an object; missing name falls
+// back to the model default "PropertyBulbul Editorial".
+function normalizeAuthor(value) {
+  if (value === undefined || value === null) return undefined;
+  if (typeof value === "string") {
+    const trimmed = value.trim();
+    return trimmed ? { name: trimmed } : undefined;
+  }
+  if (typeof value === "object") {
+    const { name, role, avatar } = value;
+    return {
+      name: typeof name === "string" && name.trim() ? name.trim() : undefined,
+      role: typeof role === "string" && role.trim() ? role.trim() : undefined,
+      avatar: typeof avatar === "string" && avatar.trim() ? avatar.trim() : undefined,
+    };
+  }
+  return undefined;
+}
+
 // Clear 400 message for Mongo duplicate-key errors (slug or title).
 function duplicateKeyMessage(err) {
   const keyValue = err.keyValue || {};
@@ -110,6 +130,8 @@ const createJournal = asyncHandler(async (req, res) => {
     content,
     targetSector,
     targetCity,
+    series,
+    articleNumber,
     metaTitle,
     metaDescription,
     keywords,
@@ -138,6 +160,7 @@ const createJournal = asyncHandler(async (req, res) => {
   const statusValue = parseJournalStatus(status);
   const featuredFlag = parseBooleanFlag(isFeatured);
   const metaDescriptionValue = metaDescription || excerpt;
+  const authorValue = normalizeAuthor(author);
 
   const journal = new Journal({
     title: String(title).trim(),
@@ -149,9 +172,11 @@ const createJournal = asyncHandler(async (req, res) => {
     content: normalizeMarkdown(content || ""),
     coverImage,
     altText,
-    author,
+    author: authorValue,
     targetSector,
     targetCity,
+    series,
+    articleNumber: articleNumber ? Number(articleNumber) : undefined,
     metaTitle,
     metaDescription: metaDescriptionValue,
     keywords: parsedKeywords,
@@ -256,6 +281,8 @@ const updateJournal = asyncHandler(async (req, res) => {
     content,
     targetSector,
     targetCity,
+    series,
+    articleNumber,
     metaTitle,
     metaDescription,
     keywords,
@@ -311,10 +338,13 @@ const updateJournal = asyncHandler(async (req, res) => {
   if (removeCover === true || removeCover === "true") journal.coverImage = "";
   if (targetSector !== undefined) journal.targetSector = targetSector;
   if (targetCity !== undefined) journal.targetCity = targetCity;
+  if (series !== undefined) journal.series = series;
+  if (articleNumber !== undefined)
+    journal.articleNumber = articleNumber ? Number(articleNumber) : undefined;
   if (metaTitle !== undefined) journal.metaTitle = metaTitle;
   if (metaDescription !== undefined) journal.metaDescription = metaDescription;
   if (altText !== undefined) journal.altText = altText;
-  if (author !== undefined) journal.author = author;
+  if (author !== undefined) journal.author = normalizeAuthor(author);
   const statusValue = parseJournalStatus(status);
   if (statusValue !== undefined) {
     journal.status = statusValue;

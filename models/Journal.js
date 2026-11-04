@@ -32,11 +32,20 @@ const journalSchema = new mongoose.Schema(
     coverImageWidth: Number,
     coverImageHeight: Number,
 
-    author: { type: String, default: "PropertyBulbul Editorial" },
+    // Rich author for E-E-A-T signals
+    author: {
+      name: { type: String, default: "PropertyBulbul Editorial", trim: true },
+      role: { type: String, trim: true },
+      avatar: { type: String, trim: true },
+    },
 
     // Related listings block
     targetCity: String,
     targetSector: String,
+
+    // Ordered guide series
+    series: { type: String, trim: true },
+    articleNumber: { type: Number },
 
     // SEO
     metaTitle: { type: String, trim: true, maxlength: 70 },
