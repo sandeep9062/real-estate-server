@@ -22,6 +22,16 @@ function parseKeywordsValue(keywords) {
       .map((k) => k.trim())
       .filter(Boolean);
   }
+
+// Journal status is the model's publication state (draft | published | archived).
+// The model strips unknown fields, so a boolean `isActive` would be ignored and
+// every new journal would land in the default `draft` status.
+const ALLOWED_JOURNAL_STATUSES = ["draft", "published", "archived"];
+
+function parseJournalStatus(value) {
+  if (value === undefined || value === null) return undefined;
+  const candidate = String(value).trim().toLowerCase();
+  return ALLOWED_JOURNAL_STATUSES.includes(candidate) ? candidate : undefined;
 }
 
 // Clear 400 message for Mongo duplicate-key errors (slug or title).
@@ -106,9 +116,12 @@ const createJournal = asyncHandler(async (req, res) => {
     excerpt,
     content,
     targetSector,
+    targetCity,
     metaTitle,
+    metaDescription,
     keywords,
-    isActive,
+    tags,
+    status,
     isFeatured,
     altText,
     author,
@@ -127,24 +140,29 @@ const createJournal = asyncHandler(async (req, res) => {
     throw new Error("Journal post with this title already exists");
   }
 
+  const parsedTags = parseKeywordsValue(tags);
   const parsedKeywords = parseKeywordsValue(keywords);
-  const activeFlag = parseBooleanFlag(isActive);
+  const statusValue = parseJournalStatus(status);
   const featuredFlag = parseBooleanFlag(isFeatured);
+  const metaDescriptionValue = metaDescription || excerpt;
 
   const journal = new Journal({
     title: String(title).trim(),
     slug: slug && String(slug).trim() ? slugify(slug) : slugify(title),
     category,
     excerpt,
-    isActive: activeFlag === undefined ? true : activeFlag,
+    status: statusValue,
     isFeatured: featuredFlag === undefined ? false : featuredFlag,
     content: normalizeMarkdown(content || ""),
     coverImage,
     altText,
     author,
     targetSector,
+    targetCity,
     metaTitle,
+    metaDescription: metaDescriptionValue,
     keywords: parsedKeywords,
+    tags: parsedTags,
   });
 
   try {
@@ -170,7 +188,7 @@ const getJournals = asyncHandler(async (req, res) => {
   const skip = (page - 1) * limit;
 
   // Build optional filter based on query params
-  const filter = { isActive: true };
+  const filter = { status: "published", deletedAt: null };
   if (req.query.category) {
     filter.category = req.query.category;
   }
@@ -207,7 +225,7 @@ const getJournals = asyncHandler(async (req, res) => {
 // @route   GET /api/journals/categories
 // @access  Public
 const getJournalCategories = asyncHandler(async (req, res) => {
-  const categories = await Journal.distinct("category", { isActive: true });
+  const categories = await Journal.distinct("category", { status: "published" });
   res.json({
     success: true,
     categories: categories.filter(Boolean),
@@ -220,7 +238,8 @@ const getJournalCategories = asyncHandler(async (req, res) => {
 const getJournalById = asyncHandler(async (req, res) => {
   const journal = await Journal.findOne({
     _id: req.params.id,
-    isActive: true,
+    status: "published",
+    deletedAt: null,
   });
 
   if (journal) {
@@ -242,10 +261,13 @@ const updateJournal = asyncHandler(async (req, res) => {
     excerpt,
     content,
     targetSector,
+    targetCity,
     metaTitle,
-    isActive,
-    isFeatured,
+    metaDescription,
     keywords,
+    tags,
+    status,
+    isFeatured,
     altText,
     author,
     removeCover,
@@ -280,6 +302,7 @@ const updateJournal = asyncHandler(async (req, res) => {
     String(slug).trim() &&
     String(slug) !== journal.slug
   ) {
+    journal.slugHistory = [journal.slug, ...(journal.slugHistory || [])];
     journal.slug = slugify(slug);
   }
   // Update semantics: empty-string title/content/slug are IGNORED (never
@@ -293,18 +316,24 @@ const updateJournal = asyncHandler(async (req, res) => {
   // Explicit cover removal (FormData sends "true" as a string).
   if (removeCover === true || removeCover === "true") journal.coverImage = "";
   if (targetSector !== undefined) journal.targetSector = targetSector;
+  if (targetCity !== undefined) journal.targetCity = targetCity;
   if (metaTitle !== undefined) journal.metaTitle = metaTitle;
+  if (metaDescription !== undefined) journal.metaDescription = metaDescription;
   if (altText !== undefined) journal.altText = altText;
   if (author !== undefined) journal.author = author;
-  const activeFlag = parseBooleanFlag(isActive);
-  if (activeFlag !== undefined) {
-    journal.isActive = activeFlag;
+  const statusValue = parseJournalStatus(status);
+  if (statusValue !== undefined) {
+    journal.status = statusValue;
   }
   const featuredFlag = parseBooleanFlag(isFeatured);
   if (featuredFlag !== undefined) {
     journal.isFeatured = featuredFlag;
   }
+  const parsedTags = parseKeywordsValue(tags);
   const parsedKeywords = parseKeywordsValue(keywords);
+  if (parsedTags !== undefined) {
+    journal.tags = parsedTags;
+  }
   if (parsedKeywords !== undefined) {
     journal.keywords = parsedKeywords;
   }
@@ -330,7 +359,8 @@ const deleteJournal = asyncHandler(async (req, res) => {
   const journal = await Journal.findById(req.params.id);
 
   if (journal) {
-    await journal.deleteOne();
+    journal.deletedAt = new Date();
+    await journal.save();
     // Best-effort: tell the Next.js app to revalidate the removed journal.
     revalidateJournal({ action: "delete", slug: journal.slug });
     res.json({ message: "Journal post removed" });
@@ -346,7 +376,8 @@ const deleteJournal = asyncHandler(async (req, res) => {
 const getJournalBySlug = asyncHandler(async (req, res) => {
   const journal = await Journal.findOne({
     slug: req.params.slug,
-    isActive: true,
+    status: "published",
+    deletedAt: null,
   });
 
   if (journal) {
@@ -363,7 +394,7 @@ const getJournalBySlug = asyncHandler(async (req, res) => {
 const trackJournalView = asyncHandler(async (req, res) => {
   // Atomic increment so concurrent page opens never lose a count.
   const journal = await Journal.findOneAndUpdate(
-    { slug: req.params.slug, isActive: true },
+    { slug: req.params.slug, status: "published", deletedAt: null },
     { $inc: { views: 1 } },
     { new: true, select: "views" },
   );
@@ -380,7 +411,7 @@ const trackJournalView = asyncHandler(async (req, res) => {
 // @route   GET /api/journals/sitemap-data
 // @access  Public
 const getJournalsForSitemap = asyncHandler(async (req, res) => {
-  const journals = await Journal.find({ isActive: true }, "slug updatedAt")
+  const journals = await Journal.find({ status: "published", deletedAt: null }, "slug updatedAt")
     .sort({ updatedAt: -1 })
     .lean();
 
@@ -404,6 +435,9 @@ const getAllJournals = asyncHandler(async (req, res) => {
   }
   if (req.query.sector) {
     filter.targetSector = req.query.sector;
+  }
+  if (req.query.city) {
+    filter.targetCity = req.query.city;
   }
 
   const total = await Journal.countDocuments(filter);
