@@ -227,13 +227,12 @@ const getJournalCategories = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get journal post by ID (only if active)
+// @desc    Get journal post by ID (any status except soft-deleted)
 // @route   GET /api/journals/:id
-// @access  Public
+// @access  Private/Admin
 const getJournalById = asyncHandler(async (req, res) => {
   const journal = await Journal.findOne({
     _id: req.params.id,
-    status: "published",
     deletedAt: null,
   });
 
