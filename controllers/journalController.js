@@ -363,14 +363,14 @@ const updateJournal = asyncHandler(async (req, res) => {
 
   try {
     const updatedJournal = await journal.save();
-    res.json(updatedJournal);
-  } catch (err) {
-    if (err && err.code === 11000) {
-      res.status(400);
-      throw new Error(duplicateKeyMessage(err));
-    }
-    throw err;
+  res.json(updatedJournal);
+} catch (err) {
+  if (err && err.code === 11000) {
+    res.status(400);
+    throw new Error(duplicateKeyMessage(err));
   }
+  throw err;
+}
 });
 
 // @desc    Delete journal post
