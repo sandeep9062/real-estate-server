@@ -187,7 +187,10 @@ const createJournal = asyncHandler(async (req, res) => {
     tags: parsedTags,
     relatedSlugs: parseKeywordsValue(relatedSlugs),
     canonicalUrl: nonEmptyString(canonicalUrl),
-    noIndex: parseBooleanFlag(noIndex) === undefined ? false : parseBooleanFlag(noIndex),
+    noIndex:
+      parseBooleanFlag(noIndex) === undefined
+        ? false
+        : parseBooleanFlag(noIndex),
     ...(authorAvatar ? { "author.avatar": authorAvatar } : {}),
   });
 
@@ -282,6 +285,7 @@ const updateJournal = asyncHandler(async (req, res) => {
   const {
     title,
     slug,
+    status,
     category,
     excerpt,
     content,
@@ -303,7 +307,7 @@ const updateJournal = asyncHandler(async (req, res) => {
   } = req.body;
   const coverImage = coverImageFromRequest(req);
   const authorAvatar = authorAvatarFromRequest(req);
-
+  const statusFlag = status || "published";
   // author arrives as a JSON string from FormData (object type).
   const parsedAuthor = parseAuthor(author);
 
@@ -341,6 +345,7 @@ const updateJournal = asyncHandler(async (req, res) => {
   // cleared). Only excerpt, metaTitle, altText, targetSector and category
   // may be cleared by sending an empty string.
   if (category !== undefined) journal.category = category;
+  if (status !== undefined) journal.status = statusFlag;
   if (excerpt !== undefined) journal.excerpt = excerpt;
   if (content !== undefined && String(content).trim())
     journal.content = normalizeMarkdown(content);
@@ -349,13 +354,16 @@ const updateJournal = asyncHandler(async (req, res) => {
   if (removeCover === true || removeCover === "true") journal.coverImage = "";
   if (targetSector !== undefined) journal.targetSector = targetSector;
   if (metaTitle !== undefined) journal.metaTitle = metaTitle;
-  if (metaDescription !== undefined) journal.metaDescription = nonEmptyString(metaDescription);
-  if (canonicalUrl !== undefined) journal.canonicalUrl = nonEmptyString(canonicalUrl);
+  if (metaDescription !== undefined)
+    journal.metaDescription = nonEmptyString(metaDescription);
+  if (canonicalUrl !== undefined)
+    journal.canonicalUrl = nonEmptyString(canonicalUrl);
   if (noIndex !== undefined) journal.noIndex = parseBooleanFlag(noIndex);
   if (altText !== undefined) journal.altText = altText;
   if (status !== undefined) journal.status = status;
   if (tags !== undefined) journal.tags = parseKeywordsValue(tags);
-  if (relatedSlugs !== undefined) journal.relatedSlugs = parseKeywordsValue(relatedSlugs);
+  if (relatedSlugs !== undefined)
+    journal.relatedSlugs = parseKeywordsValue(relatedSlugs);
   if (parsedAuthor) journal.author = { ...journal.author, ...parsedAuthor };
   if (authorAvatar) journal.author.avatar = authorAvatar;
   if (removeAuthorAvatar === true || removeAuthorAvatar === "true")
