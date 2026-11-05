@@ -133,9 +133,11 @@ const createJournal = asyncHandler(async (req, res) => {
     metaDescription,
     keywords,
     tags,
+    relatedSlugs,
     canonicalUrl,
     noIndex,
     status,
+    targetCity,
     isActive,
     isFeatured,
     altText,
@@ -177,11 +179,13 @@ const createJournal = asyncHandler(async (req, res) => {
     coverImage,
     altText,
     author: parsedAuthor ?? { name: "PropertyBulbul Editorial" },
+    targetCity,
     targetSector,
     metaTitle,
     metaDescription: nonEmptyString(metaDescription),
     keywords: parsedKeywords,
     tags: parsedTags,
+    relatedSlugs: parseKeywordsValue(relatedSlugs),
     canonicalUrl: nonEmptyString(canonicalUrl),
     noIndex: parseBooleanFlag(noIndex) === undefined ? false : parseBooleanFlag(noIndex),
     ...(authorAvatar ? { "author.avatar": authorAvatar } : {}),
@@ -281,6 +285,7 @@ const updateJournal = asyncHandler(async (req, res) => {
     category,
     excerpt,
     content,
+    targetCity,
     targetSector,
     metaTitle,
     metaDescription,
@@ -290,6 +295,7 @@ const updateJournal = asyncHandler(async (req, res) => {
     isFeatured,
     keywords,
     tags,
+    relatedSlugs,
     altText,
     author,
     removeCover,
@@ -349,6 +355,7 @@ const updateJournal = asyncHandler(async (req, res) => {
   if (altText !== undefined) journal.altText = altText;
   if (status !== undefined) journal.status = status;
   if (tags !== undefined) journal.tags = parseKeywordsValue(tags);
+  if (relatedSlugs !== undefined) journal.relatedSlugs = parseKeywordsValue(relatedSlugs);
   if (parsedAuthor) journal.author = { ...journal.author, ...parsedAuthor };
   if (authorAvatar) journal.author.avatar = authorAvatar;
   if (removeAuthorAvatar === true || removeAuthorAvatar === "true")

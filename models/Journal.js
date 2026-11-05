@@ -2,9 +2,16 @@ import mongoose from "mongoose";
 
 const journalSchema = new mongoose.Schema(
   {
-    title: String,
-    slug: { type: String, unique: true }, // e.g., "investment-guide-sector-115-mohali"
+    title: { type: String, required: true, trim: true },
+    slug: {
+      type: String,
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+    }, // e.g., "investment-guide-sector-115-mohali"
     category: String,
+
     excerpt: String,
     content: String,
     coverImage: String,
@@ -18,6 +25,7 @@ const journalSchema = new mongoose.Schema(
       role: { type: String, trim: true },
       avatar: { type: String, trim: true },
     },
+    targetCity: String,
     targetSector: String,
     metaTitle: { type: String, trim: true, maxlength: 70 },
     metaDescription: { type: String, trim: true, maxlength: 170 },
@@ -39,8 +47,9 @@ const journalSchema = new mongoose.Schema(
     publishedAt: Date,
     lastReviewedAt: Date,
 
-    tags: [String],
+    tags: [{ type: String, lowercase: true, trim: true }],
     slugHistory: [{ type: String, lowercase: true, trim: true }],
+    relatedSlugs: [{ type: String, lowercase: true, trim: true }],
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true },
