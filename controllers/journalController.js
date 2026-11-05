@@ -6,7 +6,7 @@ import {
   parseBooleanFlag,
 } from "../utils/markdown.js";
 
-// Parse keywords arriving either as an array or as a JSON/comma string
+// Parse keywords/tags arriving as an array or as a JSON/comma string
 // (multipart FormData always sends strings).
 function parseKeywordsValue(keywords) {
   if (keywords === undefined || keywords === null) return undefined;
@@ -15,7 +15,8 @@ function parseKeywordsValue(keywords) {
   const trimmed = keywords.trim();
   if (!trimmed) return [];
   try {
-    return JSON.parse(trimmed);
+    const parsed = JSON.parse(trimmed);
+    return Array.isArray(parsed) ? parsed : [String(parsed)];
   } catch {
     return trimmed
       .split(",")
@@ -24,9 +25,6 @@ function parseKeywordsValue(keywords) {
   }
 }
 
-// Journal status is the model's publication state (draft | published | archived).
-// The model strips unknown fields, so a boolean `isActive` would be ignored and
-// every new journal would land in the default `draft` status.
 const ALLOWED_JOURNAL_STATUSES = ["draft", "published", "archived"];
 
 function parseJournalStatus(value) {
@@ -35,27 +33,35 @@ function parseJournalStatus(value) {
   return ALLOWED_JOURNAL_STATUSES.includes(candidate) ? candidate : undefined;
 }
 
-// Normalize author to the rich { name, role, avatar } shape.
-// Accepts a plain string (backward-compat) or an object; missing name falls
-// back to the model default "PropertyBulbul Editorial".
+// Normalize author to { name, role, avatar }.
+// FormData sends objects as JSON strings, so try to parse those first.
 function normalizeAuthor(value) {
   if (value === undefined || value === null) return undefined;
+
   if (typeof value === "string") {
     const trimmed = value.trim();
-    return trimmed ? { name: trimmed } : undefined;
+    if (!trimmed) return undefined;
+    if (trimmed.startsWith("{")) {
+      try {
+        return normalizeAuthor(JSON.parse(trimmed));
+      } catch {
+        /* fall through: treat as plain name */
+      }
+    }
+    return { name: trimmed };
   }
+
   if (typeof value === "object") {
     const { name, role, avatar } = value;
-    return {
-      name: typeof name === "string" && name.trim() ? name.trim() : undefined,
-      role: typeof role === "string" && role.trim() ? role.trim() : undefined,
-      avatar: typeof avatar === "string" && avatar.trim() ? avatar.trim() : undefined,
-    };
+    const out = {};
+    if (typeof name === "string" && name.trim()) out.name = name.trim();
+    if (typeof role === "string" && role.trim()) out.role = role.trim();
+    if (typeof avatar === "string" && avatar.trim()) out.avatar = avatar.trim();
+    return Object.keys(out).length ? out : undefined;
   }
   return undefined;
 }
 
-// Clear 400 message for Mongo duplicate-key errors (slug or title).
 function duplicateKeyMessage(err) {
   const keyValue = err.keyValue || {};
   const pattern = err.keyPattern || {};
@@ -68,21 +74,26 @@ function duplicateKeyMessage(err) {
   return "A journal with this slug or title already exists";
 }
 
-// Trimmed non-empty string, or undefined when missing/blank.
 function nonEmptyString(value) {
   if (typeof value !== "string") return undefined;
   const trimmed = value.trim();
   return trimmed ? trimmed : undefined;
 }
 
-// Uploaded file wins; otherwise accept a pasted image URL from the form body.
-function coverImageFromRequest(req) {
-  if (req.file && req.file.secure_url) return req.file.secure_url;
-  const fromBody = req.body ? req.body.coverImage : undefined;
-  return nonEmptyString(fromBody) || null;
+// Trim and cut to the schema's max length so validation never rejects a save.
+function clampText(value, max) {
+  if (typeof value !== "string") return value;
+  return value.trim().slice(0, max);
 }
 
-// Clamp pagination: page >= 1, 1 <= limit <= 100.
+// Uploaded file wins; otherwise accept a pasted image URL from the form body.
+function coverImageFromRequest(req) {
+  if (req.file && (req.file.secure_url || req.file.path))
+    return req.file.secure_url || req.file.path;
+  const fromBody = req.body ? req.body.coverImage : undefined;
+  return nonEmptyString(fromBody) || undefined;
+}
+
 function clampPagination(query, defaultLimit) {
   let page = parseInt(query.page, 10);
   if (!Number.isFinite(page) || page < 1) page = 1;
@@ -93,28 +104,70 @@ function clampPagination(query, defaultLimit) {
   return { page, limit };
 }
 
+// @desc    Create journal post
+// @route   POST /api/journals
+// @access  Private/Admin
 const createJournal = asyncHandler(async (req, res) => {
-  const statusValue = parseJournalStatus(status);
-  const featuredFlag = parseBooleanFlag(isFeatured);
-  const metaDescriptionValue = metaDescription || excerpt;
-  const authorValue = normalizeAuthor(author);
-
-  const journal = new Journal({
-    title: String(title).trim(),
-    slug: slug && String(slug).trim() ? slugify(slug) : slugify(title),
+  const {
+    title,
+    slug,
     category,
     excerpt,
+    content,
+    targetSector,
+    targetCity,
+    series,
+    articleNumber,
+    metaTitle,
+    metaDescription,
+    keywords,
+    tags,
+    status,
+    isFeatured,
+    altText,
+    author,
+  } = req.body;
+
+  const cleanTitle = nonEmptyString(title);
+  const cleanContent = nonEmptyString(content);
+  if (!cleanTitle || !cleanContent) {
+    res.status(400);
+    throw new Error("Title and content are required");
+  }
+
+  const statusValue = parseJournalStatus(status);
+  const featuredFlag = parseBooleanFlag(isFeatured);
+  const authorValue = normalizeAuthor(author);
+  const cleanExcerpt = clampText(excerpt, 300);
+  const metaDescriptionValue = clampText(
+    nonEmptyString(metaDescription) || cleanExcerpt || "",
+    170,
+  );
+  const parsedKeywords = parseKeywordsValue(keywords);
+  const parsedTags = parseKeywordsValue(tags);
+  const finalSlug = nonEmptyString(slug) ? slugify(slug) : slugify(cleanTitle);
+
+  if (!finalSlug) {
+    res.status(400);
+    throw new Error("Could not generate a valid slug from the title");
+  }
+
+  const journal = new Journal({
+    title: cleanTitle,
+    slug: finalSlug,
+    category: nonEmptyString(category) || "Investment",
+    excerpt: cleanExcerpt,
     status: statusValue,
     isFeatured: featuredFlag === undefined ? false : featuredFlag,
-    content: normalizeMarkdown(content || ""),
-    coverImage,
+    content: normalizeMarkdown(cleanContent),
+    coverImage: coverImageFromRequest(req),
     altText,
     author: authorValue,
     targetSector,
     targetCity,
     series,
     articleNumber: articleNumber ? Number(articleNumber) : undefined,
-    metaTitle,
+    metaTitle: clampText(metaTitle, 70),
     metaDescription: metaDescriptionValue,
     keywords: parsedKeywords,
     tags: parsedTags,
@@ -128,37 +181,27 @@ const createJournal = asyncHandler(async (req, res) => {
       res.status(400);
       throw new Error(duplicateKeyMessage(err));
     }
+    if (err && err.name === "ValidationError") {
+      res.status(400);
+      throw new Error(err.message);
+    }
     throw err;
   }
 });
 
-// @desc    Get all journal posts (with pagination) — only active posts
+// @desc    Get all published journal posts
 // @route   GET /api/journals
 // @access  Public
 const getJournals = asyncHandler(async (req, res) => {
-  // Clamp pagination so a client can never force the DB to return/index an
-  // unbounded number of documents in a single request.
   const { page, limit } = clampPagination(req.query, 100);
   const skip = (page - 1) * limit;
 
-  // Build optional filter based on query params
   const filter = { status: "published", deletedAt: null };
-  if (req.query.category) {
-    filter.category = req.query.category;
-  }
-  if (req.query.sector) {
-    filter.targetSector = req.query.sector;
-  }
-  // Lets related-article queries omit the article being viewed.
-  if (req.query.exclude) {
-    filter.slug = { $ne: req.query.exclude };
-  }
+  if (req.query.category) filter.category = req.query.category;
+  if (req.query.sector) filter.targetSector = req.query.sector;
+  if (req.query.exclude) filter.slug = { $ne: req.query.exclude };
 
   const total = await Journal.countDocuments(filter);
-  // CRITICAL for load speed: exclude the full HTML `content` body from list
-  // responses. Cards never render it, and 100 full article bodies can be
-  // megabytes of JSON/HTML that delay first paint (detail pages fetch the
-  // content via the slug endpoint instead).
   const journals = await Journal.find(filter)
     .select("-content")
     .sort({ createdAt: -1 })
@@ -175,12 +218,11 @@ const getJournals = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get all distinct journal categories (from active journals only)
 // @route   GET /api/journals/categories
-// @access  Public
 const getJournalCategories = asyncHandler(async (req, res) => {
   const categories = await Journal.distinct("category", {
     status: "published",
+    deletedAt: null,
   });
   res.json({
     success: true,
@@ -188,9 +230,7 @@ const getJournalCategories = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get journal post by ID (any status except soft-deleted)
-// @route   GET /api/journals/:id
-// @access  Private/Admin
+// @route   GET /api/journals/:id  (admin)
 const getJournalById = asyncHandler(async (req, res) => {
   const journal = await Journal.findOne({
     _id: req.params.id,
@@ -231,7 +271,10 @@ const updateJournal = asyncHandler(async (req, res) => {
   } = req.body;
   const coverImage = coverImageFromRequest(req);
 
-  const journal = await Journal.findById(req.params.id);
+  const journal = await Journal.findOne({
+    _id: req.params.id,
+    deletedAt: null,
+  });
 
   if (!journal) {
     res.status(404);
@@ -240,95 +283,101 @@ const updateJournal = asyncHandler(async (req, res) => {
 
   if (title !== undefined && String(title).trim()) {
     const trimmedTitle = String(title).trim();
-    const conflict = await Journal.findOne({
-      title: trimmedTitle,
-      _id: { $ne: journal._id },
-    });
-    if (conflict) {
-      res.status(400);
-      throw new Error("Another journal post with this title already exists");
+    if (trimmedTitle !== journal.title) {
+      const conflict = await Journal.findOne({
+        title: trimmedTitle,
+        deletedAt: null,
+        _id: { $ne: journal._id },
+      });
+      if (conflict) {
+        res.status(400);
+        throw new Error("Another journal post with this title already exists");
+      }
+      journal.title = trimmedTitle;
     }
-    journal.title = trimmedTitle;
   }
-  // Slug rule: never regenerate from the title. Only act when the request
-  // explicitly sends a slug, and do nothing when the sent value already
-  // equals the stored slug -- a plain "open and save" must never rewrite
-  // (or normalize) an existing URL, since changing live URLs hurts SEO.
-  if (
-    slug !== undefined &&
-    String(slug).trim() &&
-    String(slug) !== journal.slug
-  ) {
-    journal.slugHistory = [journal.slug, ...(journal.slugHistory || [])];
-    journal.slug = slugify(slug);
+
+  // Slug rule: never regenerate from the title. Only change when an explicit,
+  // different (normalized) slug is sent; keep the old one in slugHistory.
+  if (slug !== undefined && String(slug).trim()) {
+    const newSlug = slugify(slug);
+    if (newSlug && newSlug !== journal.slug) {
+      const history = (journal.slugHistory || []).filter((s) => s !== newSlug);
+      journal.slugHistory = [journal.slug, ...history];
+      journal.slug = newSlug;
+    }
   }
-  // Update semantics: empty-string title/content/slug are IGNORED (never
-  // cleared). Only excerpt, metaTitle, altText, targetSector and category
-  // may be cleared by sending an empty string.
-  if (category !== undefined) journal.category = category;
-  if (excerpt !== undefined) journal.excerpt = excerpt;
+
+  if (category !== undefined && String(category).trim())
+    journal.category = String(category).trim();
+  if (excerpt !== undefined) journal.excerpt = clampText(excerpt, 300);
   if (content !== undefined && String(content).trim())
     journal.content = normalizeMarkdown(content);
   if (coverImage) journal.coverImage = coverImage;
-  // Explicit cover removal (FormData sends "true" as a string).
   if (removeCover === true || removeCover === "true") journal.coverImage = "";
   if (targetSector !== undefined) journal.targetSector = targetSector;
   if (targetCity !== undefined) journal.targetCity = targetCity;
   if (series !== undefined) journal.series = series;
   if (articleNumber !== undefined)
     journal.articleNumber = articleNumber ? Number(articleNumber) : undefined;
-  if (metaTitle !== undefined) journal.metaTitle = metaTitle;
-  if (metaDescription !== undefined) journal.metaDescription = metaDescription;
+  if (metaTitle !== undefined) journal.metaTitle = clampText(metaTitle, 70);
+  if (metaDescription !== undefined)
+    journal.metaDescription = clampText(metaDescription, 170);
   if (altText !== undefined) journal.altText = altText;
-  if (author !== undefined) journal.author = normalizeAuthor(author);
+
+  if (author !== undefined) {
+    const authorValue = normalizeAuthor(author);
+    if (authorValue)
+      journal.author = { ...journal.author?.toObject?.(), ...authorValue };
+  }
+
   const statusValue = parseJournalStatus(status);
-  if (statusValue !== undefined) {
-    journal.status = statusValue;
-  }
+  if (statusValue !== undefined) journal.status = statusValue;
+
   const featuredFlag = parseBooleanFlag(isFeatured);
-  if (featuredFlag !== undefined) {
-    journal.isFeatured = featuredFlag;
-  }
+  if (featuredFlag !== undefined) journal.isFeatured = featuredFlag;
+
   const parsedTags = parseKeywordsValue(tags);
   const parsedKeywords = parseKeywordsValue(keywords);
-  if (parsedTags !== undefined) {
-    journal.tags = parsedTags;
-  }
-  if (parsedKeywords !== undefined) {
-    journal.keywords = parsedKeywords;
-  }
+  if (parsedTags !== undefined) journal.tags = parsedTags;
+  if (parsedKeywords !== undefined) journal.keywords = parsedKeywords;
 
   try {
-    const updatedJournal = await journal.save();
-  res.json(updatedJournal);
-} catch (err) {
-  if (err && err.code === 11000) {
-    res.status(400);
-    throw new Error(duplicateKeyMessage(err));
+    // validateModifiedOnly: old documents with legacy/invalid fields that
+    // aren't being touched must not block the save.
+    const updatedJournal = await journal.save({ validateModifiedOnly: true });
+    res.json(updatedJournal);
+  } catch (err) {
+    if (err && err.code === 11000) {
+      res.status(400);
+      throw new Error(duplicateKeyMessage(err));
+    }
+    if (err && err.name === "ValidationError") {
+      res.status(400);
+      throw new Error(err.message);
+    }
+    throw err;
   }
-  throw err;
-}
 });
 
-// @desc    Delete journal post
+// @desc    Soft-delete journal post
 // @route   DELETE /api/journals/:id
 // @access  Private/Admin
 const deleteJournal = asyncHandler(async (req, res) => {
-  const journal = await Journal.findById(req.params.id);
+  // updateOne skips full-document validation, so legacy docs can still be deleted.
+  const result = await Journal.updateOne(
+    { _id: req.params.id, deletedAt: null },
+    { $set: { deletedAt: new Date() } },
+  );
 
-  if (journal) {
-    journal.deletedAt = new Date();
-    await journal.save();
-    res.json({ message: "Journal post removed" });
-  } else {
+  if (result.matchedCount === 0) {
     res.status(404);
     throw new Error("Journal post not found");
   }
+  res.json({ message: "Journal post removed" });
 });
 
-// @desc    Get journal post by slug (only if active)
 // @route   GET /api/journals/slug/:slug
-// @access  Public
 const getJournalBySlug = asyncHandler(async (req, res) => {
   const journal = await Journal.findOne({
     slug: req.params.slug,
@@ -344,11 +393,8 @@ const getJournalBySlug = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Track a view when the public journal detail page is opened
 // @route   POST /api/journals/:slug/view
-// @access  Public
 const trackJournalView = asyncHandler(async (req, res) => {
-  // Atomic increment so concurrent page opens never lose a count.
   const journal = await Journal.findOneAndUpdate(
     { slug: req.params.slug, status: "published", deletedAt: null },
     { $inc: { views: 1 } },
@@ -363,9 +409,7 @@ const trackJournalView = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get all journal slugs for sitemap (only active journals)
 // @route   GET /api/journals/sitemap-data
-// @access  Public
 const getJournalsForSitemap = asyncHandler(async (req, res) => {
   const journals = await Journal.find(
     { status: "published", deletedAt: null },
@@ -381,26 +425,19 @@ const getJournalsForSitemap = asyncHandler(async (req, res) => {
   });
 });
 
-// @desc    Get ALL journal posts (including inactive) — for admin dashboard
+// @desc    Get ALL non-deleted journals (any status) — admin dashboard
 // @route   GET /api/journals/all
 // @access  Private/Admin
 const getAllJournals = asyncHandler(async (req, res) => {
   const { page, limit } = clampPagination(req.query, 10);
   const skip = (page - 1) * limit;
 
-  const filter = {};
-  if (req.query.category) {
-    filter.category = req.query.category;
-  }
-  if (req.query.sector) {
-    filter.targetSector = req.query.sector;
-  }
-  if (req.query.city) {
-    filter.targetCity = req.query.city;
-  }
+  const filter = { deletedAt: null }; // soft-deleted journals must not show up
+  if (req.query.category) filter.category = req.query.category;
+  if (req.query.sector) filter.targetSector = req.query.sector;
+  if (req.query.city) filter.targetCity = req.query.city;
 
   const total = await Journal.countDocuments(filter);
-  // List views never render the body, so exclude it for speed.
   const journals = await Journal.find(filter)
     .select("-content")
     .sort({ createdAt: -1 })
