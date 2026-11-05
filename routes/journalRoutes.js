@@ -38,7 +38,15 @@ router.get("/all", protect, checkAdmin, getAllJournals);
 // Admin-only: create journal
 router
   .route("/")
-  .post(protect, checkAdmin, upload.single("coverImage"), createJournal)
+  .post(
+    protect,
+    checkAdmin,
+    upload.fields([
+      { name: "coverImage", maxCount: 1 },
+      { name: "authorAvatar", maxCount: 1 },
+    ]),
+    createJournal
+  )
   .get(getJournals);
 
 // Public: view single journal by ID
@@ -46,7 +54,15 @@ router
 router
   .route("/:id")
   .get(getJournalById)
-  .put(protect, checkAdmin, upload.single("coverImage"), updateJournal)
+  .put(
+    protect,
+    checkAdmin,
+    upload.fields([
+      { name: "coverImage", maxCount: 1 },
+      { name: "authorAvatar", maxCount: 1 },
+    ]),
+    updateJournal
+  )
   .delete(protect, checkAdmin, deleteJournal);
 
 router.route("/slug/:slug").get(getJournalBySlug);

@@ -44,11 +44,32 @@ function nonEmptyString(value) {
   return trimmed ? trimmed : undefined;
 }
 
+// author arrives as a JSON string from FormData; parse into { name, role, avatar }.
+function parseAuthor(value) {
+  if (!value) return undefined;
+  if (typeof value === "object" && !Array.isArray(value)) return value;
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === "object" ? parsed : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // Uploaded file wins; otherwise accept a pasted image URL from the form body.
+// Works with both multer.single (req.file) and multer.fields (req.files).
 function coverImageFromRequest(req) {
-  if (req.file && req.file.secure_url) return req.file.secure_url;
+  const uploaded = req.files?.coverImage?.[0] || req.file;
+  if (uploaded && uploaded.secure_url) return uploaded.secure_url;
   const fromBody = req.body ? req.body.coverImage : undefined;
   return nonEmptyString(fromBody) || null;
+}
+
+// Author avatar file uploaded via multer.fields (req.files.authorAvatar).
+function authorAvatarFromRequest(req) {
+  const uploaded = req.files?.authorAvatar?.[0];
+  if (uploaded && uploaded.secure_url) return uploaded.secure_url;
+  return null;
 }
 
 // Clamp pagination: page >= 1, 1 <= limit <= 100.
@@ -109,13 +130,22 @@ const createJournal = asyncHandler(async (req, res) => {
     content,
     targetSector,
     metaTitle,
+    metaDescription,
     keywords,
+    tags,
+    canonicalUrl,
+    noIndex,
+    status,
     isActive,
     isFeatured,
     altText,
     author,
   } = req.body;
   const coverImage = coverImageFromRequest(req);
+  const authorAvatar = authorAvatarFromRequest(req);
+
+  // author arrives as a JSON string from FormData (object type).
+  const parsedAuthor = parseAuthor(author);
 
   if (!title || !String(title).trim()) {
     res.status(400);
@@ -130,23 +160,31 @@ const createJournal = asyncHandler(async (req, res) => {
   }
 
   const parsedKeywords = parseKeywordsValue(keywords);
+  const parsedTags = parseKeywordsValue(tags);
   const activeFlag = parseBooleanFlag(isActive);
   const featuredFlag = parseBooleanFlag(isFeatured);
+  const statusFlag = status || "published";
 
   const journal = new Journal({
     title: String(title).trim(),
     slug: slug && String(slug).trim() ? slugify(slug) : slugify(title),
     category,
     excerpt,
+    status: statusFlag,
     isActive: activeFlag === undefined ? true : activeFlag,
     isFeatured: featuredFlag === undefined ? false : featuredFlag,
     content: normalizeMarkdown(content || ""),
     coverImage,
     altText,
-    author,
+    author: parsedAuthor ?? { name: "PropertyBulbul Editorial" },
     targetSector,
     metaTitle,
+    metaDescription: nonEmptyString(metaDescription),
     keywords: parsedKeywords,
+    tags: parsedTags,
+    canonicalUrl: nonEmptyString(canonicalUrl),
+    noIndex: parseBooleanFlag(noIndex) === undefined ? false : parseBooleanFlag(noIndex),
+    ...(authorAvatar ? { "author.avatar": authorAvatar } : {}),
   });
 
   try {
@@ -245,14 +283,23 @@ const updateJournal = asyncHandler(async (req, res) => {
     content,
     targetSector,
     metaTitle,
+    metaDescription,
+    canonicalUrl,
+    noIndex,
     isActive,
     isFeatured,
     keywords,
+    tags,
     altText,
     author,
     removeCover,
+    removeAuthorAvatar,
   } = req.body;
   const coverImage = coverImageFromRequest(req);
+  const authorAvatar = authorAvatarFromRequest(req);
+
+  // author arrives as a JSON string from FormData (object type).
+  const parsedAuthor = parseAuthor(author);
 
   const journal = await Journal.findById(req.params.id);
 
@@ -296,8 +343,16 @@ const updateJournal = asyncHandler(async (req, res) => {
   if (removeCover === true || removeCover === "true") journal.coverImage = "";
   if (targetSector !== undefined) journal.targetSector = targetSector;
   if (metaTitle !== undefined) journal.metaTitle = metaTitle;
+  if (metaDescription !== undefined) journal.metaDescription = nonEmptyString(metaDescription);
+  if (canonicalUrl !== undefined) journal.canonicalUrl = nonEmptyString(canonicalUrl);
+  if (noIndex !== undefined) journal.noIndex = parseBooleanFlag(noIndex);
   if (altText !== undefined) journal.altText = altText;
-  if (author !== undefined) journal.author = author;
+  if (status !== undefined) journal.status = status;
+  if (tags !== undefined) journal.tags = parseKeywordsValue(tags);
+  if (parsedAuthor) journal.author = { ...journal.author, ...parsedAuthor };
+  if (authorAvatar) journal.author.avatar = authorAvatar;
+  if (removeAuthorAvatar === true || removeAuthorAvatar === "true")
+    journal.author.avatar = "";
   const activeFlag = parseBooleanFlag(isActive);
   if (activeFlag !== undefined) {
     journal.isActive = activeFlag;
