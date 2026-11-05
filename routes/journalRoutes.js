@@ -41,19 +41,17 @@ router
   .post(protect, checkAdmin, upload.single("coverImage"), createJournal)
   .get(getJournals);
 
-// Public: view single journal by slug (SEO-friendly URLs)
+// Public: view single journal by ID
+// Admin-only: update and delete
+router
+  .route("/:id")
+  .get(getJournalById)
+  .put(protect, checkAdmin, upload.single("coverImage"), updateJournal)
+  .delete(protect, checkAdmin, deleteJournal);
+
 router.route("/slug/:slug").get(getJournalBySlug);
 
 // Public: count a view when the journal detail page is opened
 router.route("/:slug/view").post(journalViewLimiter, trackJournalView);
-
-// Admin-only: view/update/delete a single journal by ID.
-// Placed LAST so the more specific /slug/:slug and /:slug/view routes above
-// are matched first (Express matches in declaration order).
-router
-  .route("/:id")
-  .get(protect, checkAdmin, getJournalById)
-  .put(protect, checkAdmin, upload.single("coverImage"), updateJournal)
-  .delete(protect, checkAdmin, deleteJournal);
 
 export default router;

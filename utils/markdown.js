@@ -13,7 +13,11 @@ export function normalizeMarkdown(text) {
   const ZWNJ = String.fromCharCode(8204);
   const ZWJ = String.fromCharCode(8205);
   const BOM = String.fromCharCode(65279);
-  let out = text.split(CR + LF).join(LF).split(CR).join(LF);
+  let out = text
+    .split(CR + LF)
+    .join(LF)
+    .split(CR)
+    .join(LF);
   const singles = ["*", "_", "[", "]"];
   for (const ch of singles) {
     out = out.split(BS + ch).join(ch);
