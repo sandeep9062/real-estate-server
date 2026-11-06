@@ -91,6 +91,16 @@ function toNumber(value) {
   return Number.isFinite(n) ? n : undefined;
 }
 
+// Word count + reading time (replaces the old pre-save hook).
+function contentStats(text) {
+  const t = typeof text === "string" ? text.trim() : "";
+  const words = t ? t.split(/\s+/).length : 0;
+  return {
+    wordCount: words,
+    readingTime: Math.max(1, Math.round(words / 200)),
+  };
+}
+
 // Clamp pagination: page >= 1, 1 <= limit <= 100.
 function clampPagination(query, defaultLimit) {
   let page = parseInt(query.page, 10);
@@ -177,6 +187,8 @@ const createJournal = asyncHandler(async (req, res) => {
   const featuredFlag = parseBooleanFlag(isFeatured);
   const statusFlag = status || "published";
 
+  const normalizedContent = normalizeMarkdown(content || "");
+
   // FIX: build the author object explicitly. The old `"author.avatar"` dotted
   // key inside the constructor object was unreliable.
   const authorDoc = {
@@ -199,7 +211,9 @@ const createJournal = asyncHandler(async (req, res) => {
     status: statusFlag,
     isActive: activeFlag === undefined ? true : activeFlag,
     isFeatured: featuredFlag === undefined ? false : featuredFlag,
-    content: normalizeMarkdown(content || ""),
+    content: normalizedContent,
+    ...contentStats(normalizedContent),
+    ...(statusFlag === "published" ? { publishedAt: new Date() } : {}),
     coverImage: coverImage || undefined,
     altText,
     author: authorDoc,
@@ -422,8 +436,14 @@ const updateJournal = asyncHandler(async (req, res) => {
   if (category !== undefined) journal.category = category;
   if (status !== undefined) journal.status = statusFlag;
   if (excerpt !== undefined) journal.excerpt = excerpt;
-  if (content !== undefined && String(content).trim())
+  if (content !== undefined && String(content).trim()) {
     journal.content = normalizeMarkdown(content);
+    const stats = contentStats(journal.content);
+    journal.wordCount = stats.wordCount;
+    journal.readingTime = stats.readingTime;
+  }
+  if (journal.status === "published" && !journal.publishedAt)
+    journal.publishedAt = new Date();
   if (coverImage) journal.coverImage = coverImage;
   // Explicit cover removal (FormData sends "true" as a string).
   if (removeCover === true || removeCover === "true") journal.coverImage = "";
