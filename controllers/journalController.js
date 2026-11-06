@@ -354,6 +354,38 @@ const updateJournal = asyncHandler(async (req, res) => {
   // author arrives as a JSON string from FormData (object type).
   const parsedAuthor = parseAuthor(author);
 
+  // FAST PATH: the dashboard switches (Active / Featured) send only those
+  // flags. Update them atomically so a legacy document that fails schema
+  // validation (e.g. an old long metaTitle) can never block a simple toggle.
+  const bodyKeys = Object.keys(req.body || {});
+  const hasFiles = !!(req.file || (req.files && Object.keys(req.files).length));
+  const toggleOnly =
+    !hasFiles &&
+    bodyKeys.length > 0 &&
+    bodyKeys.every((k) => k === "isActive" || k === "isFeatured");
+  if (toggleOnly) {
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      res.status(400);
+      throw new Error("Invalid journal id");
+    }
+    const $set = {};
+    const a = parseBooleanFlag(isActive);
+    const f = parseBooleanFlag(isFeatured);
+    if (a !== undefined) $set.isActive = a;
+    if (f !== undefined) $set.isFeatured = f;
+    const toggled = await Journal.findByIdAndUpdate(
+      req.params.id,
+      { $set },
+      { new: true },
+    );
+    if (!toggled) {
+      res.status(404);
+      throw new Error("Journal post not found");
+    }
+    revalidateJournal({ action: "update", slug: toggled.slug });
+    return res.json(toggled);
+  }
+
   const journal = await Journal.findById(req.params.id);
 
   if (!journal) {
@@ -436,7 +468,9 @@ const updateJournal = asyncHandler(async (req, res) => {
   }
 
   try {
-    const updatedJournal = await journal.save();
+    // validateModifiedOnly: only validate fields actually changed, so legacy
+    // data in untouched fields doesn't cause a 500.
+    const updatedJournal = await journal.save({ validateModifiedOnly: true });
     // Best-effort: tell the Next.js app to revalidate the updated journal.
     revalidateJournal({ action: "update", slug: updatedJournal.slug });
     res.json(updatedJournal);
