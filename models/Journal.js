@@ -27,7 +27,9 @@ const journalSchema = new mongoose.Schema(
     },
     targetCity: String,
     targetSector: String,
-    metaTitle: { type: String, trim: true, maxlength: 70 },
+    // FIX: the admin form allows up to 120 chars for metaTitle, but the schema
+    // capped it at 70, so any longer title failed validation on save.
+    metaTitle: { type: String, trim: true, maxlength: 120 },
     metaDescription: { type: String, trim: true, maxlength: 170 },
     keywords: [String],
     canonicalUrl: String,
@@ -58,7 +60,9 @@ const journalSchema = new mongoose.Schema(
 // Compute reading time and word count whenever content changes
 journalSchema.pre("save", function (next) {
   if (this.isModified("content")) {
-    const words = this.content.trim().split(/\s+/).length;
+    // FIX: guard against undefined content (previously threw on .trim()).
+    const text = (this.content || "").trim();
+    const words = text ? text.split(/\s+/).length : 0;
     this.wordCount = words;
     this.readingTime = Math.max(1, Math.round(words / 200));
   }
@@ -82,9 +86,7 @@ journalSchema.index({ isFeatured: 1, status: 1, publishedAt: -1 });
 journalSchema.index({ tags: 1, status: 1, publishedAt: -1 });
 // Old-slug redirects
 journalSchema.index({ slugHistory: 1 });
-// Speed up the public list endpoint (GET /api/v1/journals), which filters
-// on `isActive` and sorts by `createdAt` desc before skip/limit pagination —
-// without this the DB does a full collection sort on every page request.
+// Speed up the public list endpoint (filters on isActive, sorts by createdAt)
 journalSchema.index({ isActive: 1, createdAt: -1 });
 
 const Journal = mongoose.model("Journal", journalSchema);

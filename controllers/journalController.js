@@ -1,3 +1,4 @@
+import mongoose from "mongoose";
 import Journal from "../models/Journal.js";
 import asyncHandler from "express-async-handler";
 import {
@@ -58,18 +59,36 @@ function parseAuthor(value) {
 
 // Uploaded file wins; otherwise accept a pasted image URL from the form body.
 // Works with both multer.single (req.file) and multer.fields (req.files).
+// FIX: different multer-cloudinary setups expose the hosted URL as
+// `secure_url`, `path` or `url`; accept any http(s) one so uploads don't
+// silently vanish.
+function uploadedUrl(file) {
+  if (!file) return null;
+  const candidates = [file.secure_url, file.path, file.url];
+  return (
+    candidates.find((u) => typeof u === "string" && /^https?:\/\//i.test(u)) ||
+    null
+  );
+}
+
 function coverImageFromRequest(req) {
   const uploaded = req.files?.coverImage?.[0] || req.file;
-  if (uploaded && uploaded.secure_url) return uploaded.secure_url;
+  const url = uploadedUrl(uploaded);
+  if (url) return url;
   const fromBody = req.body ? req.body.coverImage : undefined;
   return nonEmptyString(fromBody) || null;
 }
 
 // Author avatar file uploaded via multer.fields (req.files.authorAvatar).
 function authorAvatarFromRequest(req) {
-  const uploaded = req.files?.authorAvatar?.[0];
-  if (uploaded && uploaded.secure_url) return uploaded.secure_url;
-  return null;
+  return uploadedUrl(req.files?.authorAvatar?.[0]);
+}
+
+// Number from a FormData string; undefined when blank/invalid.
+function toNumber(value) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : undefined;
 }
 
 // Clamp pagination: page >= 1, 1 <= limit <= 100.
@@ -92,33 +111,22 @@ function clampPagination(query, defaultLimit) {
  *  writes (it is read-only and dependent on the backend). The backend calls
  *  this after a successful journal create/update/delete, which then revalidates
  *  the Next.js app's journal pages and tags. Never blocks the admin response. */
-async function revalidateJournal({ action, slug }) {
+function revalidateJournal({ action, slug }) {
   const nextJsAppUrl =
     process.env.NEXTJS_APP_URL ||
     process.env.NEXT_PUBLIC_URL ||
     "https://www.propertybulbul.com";
-  try {
-    void (async () => {
-      const nextJsAppUrl =
-        process.env.NEXTJS_APP_URL ||
-        process.env.NEXT_PUBLIC_URL ||
-        "https://www.propertybulbul.com";
-      try {
-        await fetch(`${nextJsAppUrl}/api/revalidate`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-admin-secret": process.env.ADMIN_REVALIDATE_SECRET,
-          },
-          body: JSON.stringify({ action, slug }),
-        });
-      } catch (err) {
-        console.warn("Journal revalidation queue failed:", err);
-      }
-    })();
-  } catch (err) {
-    console.warn("Journal revalidation queue failed:", err);
-  }
+  // Fire-and-forget; never throws into the request handler.
+  fetch(`${nextJsAppUrl}/api/revalidate`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-admin-secret": process.env.ADMIN_REVALIDATE_SECRET || "",
+    },
+    body: JSON.stringify({ action, slug }),
+  }).catch((err) => {
+    console.warn("Journal revalidation failed:", err?.message || err);
+  });
 }
 
 const createJournal = asyncHandler(async (req, res) => {
@@ -142,6 +150,8 @@ const createJournal = asyncHandler(async (req, res) => {
     isFeatured,
     altText,
     author,
+    coverImageWidth,
+    coverImageHeight,
   } = req.body;
   const coverImage = coverImageFromRequest(req);
   const authorAvatar = authorAvatarFromRequest(req);
@@ -167,6 +177,20 @@ const createJournal = asyncHandler(async (req, res) => {
   const featuredFlag = parseBooleanFlag(isFeatured);
   const statusFlag = status || "published";
 
+  // FIX: build the author object explicitly. The old `"author.avatar"` dotted
+  // key inside the constructor object was unreliable.
+  const authorDoc = {
+    name: nonEmptyString(parsedAuthor?.name) || "PropertyBulbul Editorial",
+    ...(nonEmptyString(parsedAuthor?.role)
+      ? { role: nonEmptyString(parsedAuthor.role) }
+      : {}),
+    ...(authorAvatar
+      ? { avatar: authorAvatar }
+      : nonEmptyString(parsedAuthor?.avatar)
+        ? { avatar: nonEmptyString(parsedAuthor.avatar) }
+        : {}),
+  };
+
   const journal = new Journal({
     title: String(title).trim(),
     slug: slug && String(slug).trim() ? slugify(slug) : slugify(title),
@@ -176,9 +200,9 @@ const createJournal = asyncHandler(async (req, res) => {
     isActive: activeFlag === undefined ? true : activeFlag,
     isFeatured: featuredFlag === undefined ? false : featuredFlag,
     content: normalizeMarkdown(content || ""),
-    coverImage,
+    coverImage: coverImage || undefined,
     altText,
-    author: parsedAuthor ?? { name: "PropertyBulbul Editorial" },
+    author: authorDoc,
     targetCity,
     targetSector,
     metaTitle,
@@ -191,7 +215,8 @@ const createJournal = asyncHandler(async (req, res) => {
       parseBooleanFlag(noIndex) === undefined
         ? false
         : parseBooleanFlag(noIndex),
-    ...(authorAvatar ? { "author.avatar": authorAvatar } : {}),
+    coverImageWidth: toNumber(coverImageWidth),
+    coverImageHeight: toNumber(coverImageHeight),
   });
 
   try {
@@ -278,6 +303,22 @@ const getJournalById = asyncHandler(async (req, res) => {
   }
 });
 
+// @desc    Get journal post by ID for the admin editor (active OR inactive)
+// @route   GET /api/journals/admin/:id
+// @access  Private/Admin
+const getJournalByIdAdmin = asyncHandler(async (req, res) => {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+    res.status(400);
+    throw new Error("Invalid journal id");
+  }
+  const journal = await Journal.findById(req.params.id);
+  if (!journal) {
+    res.status(404);
+    throw new Error("Journal post not found");
+  }
+  res.json(journal);
+});
+
 // @desc    Update journal post
 // @route   PUT /api/journals/:id
 // @access  Private/Admin
@@ -304,6 +345,8 @@ const updateJournal = asyncHandler(async (req, res) => {
     author,
     removeCover,
     removeAuthorAvatar,
+    coverImageWidth,
+    coverImageHeight,
   } = req.body;
   const coverImage = coverImageFromRequest(req);
   const authorAvatar = authorAvatarFromRequest(req);
@@ -364,10 +407,21 @@ const updateJournal = asyncHandler(async (req, res) => {
   if (tags !== undefined) journal.tags = parseKeywordsValue(tags);
   if (relatedSlugs !== undefined)
     journal.relatedSlugs = parseKeywordsValue(relatedSlugs);
-  if (parsedAuthor) journal.author = { ...journal.author, ...parsedAuthor };
-  if (authorAvatar) journal.author.avatar = authorAvatar;
+  // FIX: set author fields individually. Spreading a Mongoose nested path
+  // (`{ ...journal.author }`) copies internals, not the plain values.
+  if (parsedAuthor) {
+    if (nonEmptyString(parsedAuthor.name))
+      journal.set("author.name", nonEmptyString(parsedAuthor.name));
+    if (parsedAuthor.role !== undefined)
+      journal.set("author.role", nonEmptyString(parsedAuthor.role) || "");
+  }
+  if (authorAvatar) journal.set("author.avatar", authorAvatar);
   if (removeAuthorAvatar === true || removeAuthorAvatar === "true")
-    journal.author.avatar = "";
+    journal.set("author.avatar", "");
+  const w = toNumber(coverImageWidth);
+  const h = toNumber(coverImageHeight);
+  if (w !== undefined) journal.coverImageWidth = w;
+  if (h !== undefined) journal.coverImageHeight = h;
   const activeFlag = parseBooleanFlag(isActive);
   if (activeFlag !== undefined) {
     journal.isActive = activeFlag;
@@ -501,6 +555,7 @@ export {
   getJournals,
   getAllJournals,
   getJournalById,
+  getJournalByIdAdmin,
   getJournalBySlug,
   getJournalCategories,
   updateJournal,
