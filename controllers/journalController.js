@@ -431,8 +431,8 @@ const updateJournal = asyncHandler(async (req, res) => {
     journal.slug = slugify(slug);
   }
   // Update semantics: empty-string title/content/slug are IGNORED (never
-  // cleared). Only excerpt, metaTitle, altText, targetSector and category
-  // may be cleared by sending an empty string.
+  // cleared). Only excerpt, metaTitle, altText, targetSector, targetCity
+  // and category may be cleared by sending an empty string.
   if (category !== undefined) journal.category = category;
   if (status !== undefined) journal.status = statusFlag;
   if (excerpt !== undefined) journal.excerpt = excerpt;
@@ -448,6 +448,7 @@ const updateJournal = asyncHandler(async (req, res) => {
   // Explicit cover removal (FormData sends "true" as a string).
   if (removeCover === true || removeCover === "true") journal.coverImage = "";
   if (targetSector !== undefined) journal.targetSector = targetSector;
+  if (targetCity !== undefined) journal.targetCity = targetCity;
   if (metaTitle !== undefined) journal.metaTitle = metaTitle;
   if (metaDescription !== undefined)
     journal.metaDescription = nonEmptyString(metaDescription);
