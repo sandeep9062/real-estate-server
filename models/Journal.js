@@ -58,7 +58,9 @@ const journalSchema = new mongoose.Schema(
 );
 
 // Compute reading time and word count whenever content changes
-journalSchema.pre("save", function (next) {
+// NOTE: no `next` argument. Newer Mongoose versions don't pass it, which caused
+// "next is not a function". A plain synchronous hook works on all versions.
+journalSchema.pre("save", function () {
   if (this.isModified("content")) {
     // FIX: guard against undefined content (previously threw on .trim()).
     const text = (this.content || "").trim();
@@ -73,7 +75,6 @@ journalSchema.pre("save", function (next) {
   ) {
     this.publishedAt = new Date();
   }
-  next();
 });
 
 // Public list: published, not deleted, newest first
