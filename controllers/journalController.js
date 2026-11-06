@@ -463,6 +463,14 @@ const updateJournal = asyncHandler(async (req, res) => {
   // FIX: set author fields individually. Spreading a Mongoose nested path
   // (`{ ...journal.author }`) copies internals, not the plain values.
   if (parsedAuthor) {
+    // Legacy documents may store author as a plain string; convert to object
+    // before setting nested fields so Mongoose doesn't throw trying to set
+    // .name on a string primitive.
+    if (typeof journal.author === "string") {
+      journal.author = { name: journal.author || undefined };
+    } else if (!journal.author) {
+      journal.author = {};
+    }
     if (nonEmptyString(parsedAuthor.name))
       journal.set("author.name", nonEmptyString(parsedAuthor.name));
     if (parsedAuthor.role !== undefined)
